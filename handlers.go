@@ -11,7 +11,7 @@ import (
 )
 
 type FilterResponse struct {
-	Accounts []AccountAsMap `json:"accounts"`
+	Accounts []Account `json:"accounts"`
 }
 
 func filterHandler(ctx *fasthttp.RequestCtx) {
@@ -119,7 +119,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	var resultIds []int
-	var results = make([]AccountAsMap, 0)
+	var results = make([]Account, 0)
 
 	hasFilters := 0
 	// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);

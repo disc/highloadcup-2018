@@ -11,7 +11,7 @@ import (
 
 var columnList = []string{"id", "email", "fname", "sname", "phone", "sex", "birth", "country", "city", "joined", "status", "interests", "premium"}
 
-type AccountAsMap map[string]string
+type Account map[string]string
 
 func GetIdFromKey(key string) int {
 	chunks := strings.SplitN(key, ":", 3)
@@ -27,8 +27,8 @@ func BuildKey(id interface{}, key string) string {
 	return fmt.Sprintf("acc:%v:%s", id, key)
 }
 
-func GetAccount(id int, columns []string) AccountAsMap {
-	result := AccountAsMap{}
+func GetAccount(id int, columns []string) Account {
+	result := Account{}
 
 	if len(columns) == 0 {
 		columns = columnList
