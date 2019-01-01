@@ -122,130 +122,214 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	var results = make([]Account, 0)
 
 	hasFilters := 0
-	// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);
 	_ = db.View(func(tx *buntdb.Tx) error {
 		if len(sexEqF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("sex", string(sexEqF), tx)
+			resultIds = processResults(
+				eqFilter("sex", string(sexEqF), tx),
+				resultIds,
+			)
 		}
 		if len(emailDomainF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("email_domain", string(emailDomainF), tx)
+			resultIds = processResults(
+				eqFilter("email_domain", string(emailDomainF), tx),
+				resultIds,
+			)
 		}
 		if len(emailLtF) > 0 {
 			hasFilters = 1
-			resultIds = ltFilter("email", string(emailLtF), tx)
+			resultIds = processResults(
+				ltFilter("email", string(emailLtF), tx),
+				resultIds,
+			)
 		}
 		if len(emailGtF) > 0 {
 			hasFilters = 1
-			resultIds = gtFilter("email", string(emailGtF), tx)
+			resultIds = processResults(
+				gtFilter("email", string(emailGtF), tx),
+				resultIds,
+			)
 		}
 		if len(statusEqF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("status", string(statusEqF), tx)
+			resultIds = processResults(
+				eqFilter("status", string(statusEqF), tx),
+				resultIds,
+			)
 		}
 		if len(statusNeqF) > 0 {
 			hasFilters = 1
+			var foundResults []int
 			_ = tx.Ascend("status", func(key, val string) bool {
 				// TODO: Rewrite
 				if val != string(statusEqF) {
-					resultIds = append(resultIds, GetIdFromKey(key))
+					foundResults = append(resultIds, GetIdFromKey(key))
 				}
 				return true
 			})
+
+			resultIds = processResults(
+				foundResults,
+				resultIds,
+			)
 		}
 		if len(fnameEqF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("fname", string(fnameEqF), tx)
+			resultIds = processResults(
+				eqFilter("fname", string(fnameEqF), tx),
+				resultIds,
+			)
 		}
 		if len(fnameAnyF) > 0 {
 			hasFilters = 1
-			anyFilter("fname", string(fnameAnyF), tx)
+			resultIds = processResults(
+				anyFilter("fname", string(fnameAnyF), tx),
+				resultIds,
+			)
 		}
 		if len(fnameNullF) > 0 {
 			hasFilters = 1
-			// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);
-			resultIds = nullFilter("fname", string(fnameNullF), tx)
+			resultIds = processResults(
+				nullFilter("fname", string(fnameNullF), tx),
+				resultIds,
+			)
 		}
 		if len(snameEqF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("sname", string(snameEqF), tx)
+			resultIds = processResults(
+				eqFilter("sname", string(snameEqF), tx),
+				resultIds,
+			)
 		}
 		if len(snameStartsF) > 0 {
 			hasFilters = 1
 			sSnameStartsF := string(snameStartsF)
+			var foundResults []int
 			_ = tx.Ascend("sname", func(key, val string) bool {
 				if strings.HasPrefix(val, sSnameStartsF) {
-					resultIds = append(resultIds, GetIdFromKey(key))
+					foundResults = append(resultIds, GetIdFromKey(key))
 				}
 
 				return true
 			})
+
+			resultIds = processResults(
+				foundResults,
+				resultIds,
+			)
 		}
 		if len(snameNullF) > 0 {
 			hasFilters = 1
-			resultIds = nullFilter("sname", string(snameNullF), tx)
+			resultIds = processResults(
+				nullFilter("sname", string(snameNullF), tx),
+				resultIds,
+			)
 		}
 		if len(phoneCodeF) > 0 {
 			hasFilters = 1
-			//TODO: create phone_code index
-			resultIds = eqFilter("phone_code", string(phoneCodeF), tx)
+			resultIds = processResults(
+				eqFilter("phone_code", string(phoneCodeF), tx),
+				resultIds,
+			)
 		}
 		if len(phoneNullF) > 0 {
 			hasFilters = 1
-			resultIds = nullFilter("phone", string(phoneNullF), tx)
+			resultIds = processResults(
+				nullFilter("phone", string(phoneNullF), tx),
+				resultIds,
+			)
 		}
 		if len(countryEqF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("country", string(countryEqF), tx)
+			resultIds = processResults(
+				eqFilter("country", string(countryEqF), tx),
+				resultIds,
+			)
 		}
 		if len(countryNullF) > 0 {
 			hasFilters = 1
-			resultIds = nullFilter("country", string(countryNullF), tx)
+			resultIds = processResults(
+				nullFilter("country", string(countryNullF), tx),
+				resultIds,
+			)
 		}
 		if len(cityEqF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("city", string(cityEqF), tx)
+			resultIds = processResults(
+				eqFilter("city", string(cityEqF), tx),
+				resultIds,
+			)
 		}
 		if len(cityAnyF) > 0 {
 			hasFilters = 1
-			resultIds = anyFilter("city", string(cityAnyF), tx)
+			resultIds = processResults(
+				anyFilter("city", string(cityAnyF), tx),
+				resultIds,
+			)
 		}
 		if len(cityNullF) > 0 {
 			hasFilters = 1
-			resultIds = nullFilter("city", string(cityNullF), tx)
+			resultIds = processResults(
+				nullFilter("city", string(cityNullF), tx),
+				resultIds,
+			)
 		}
 		if len(birthLtF) > 0 {
 			hasFilters = 1
-			resultIds = ltFilter("birth", string(birthLtF), tx)
+			resultIds = processResults(
+				ltFilter("birth", string(birthLtF), tx),
+				resultIds,
+			)
 		}
 		if len(birthGtF) > 0 {
 			hasFilters = 1
-			resultIds = gtFilter("birth", string(birthGtF), tx)
+			resultIds = processResults(
+				gtFilter("birth", string(birthGtF), tx),
+				resultIds,
+			)
 		}
 		if len(birthYearF) > 0 {
 			hasFilters = 1
-			resultIds = eqFilter("birth_year", string(statusEqF), tx)
+			resultIds = processResults(
+				eqFilter("birth_year", string(statusEqF), tx),
+				resultIds,
+			)
 		}
 		if len(interestsContainsF) > 0 {
 			hasFilters = 1
-			resultIds = containsFilter("interests", string(interestsContainsF), tx)
+			resultIds = processResults(
+				containsFilter("interests", string(interestsContainsF), tx),
+				resultIds,
+			)
 		}
 		if len(interestsAnyF) > 0 {
 			hasFilters = 1
-			resultIds = anyFilter("interests", string(interestsAnyF), tx)
+			resultIds = processResults(
+				anyFilter("interests", string(interestsAnyF), tx),
+				resultIds,
+			)
 		}
 		if len(likesContainsF) > 0 {
 			hasFilters = 1
-			resultIds = containsFilter("likes", string(likesContainsF), tx)
+			resultIds = processResults(
+				containsFilter("likes", string(likesContainsF), tx),
+				resultIds,
+			)
 		}
 		if len(premiumNowF) > 0 {
 			hasFilters = 1
-			resultIds = ltFilter("premium_to", string(premiumNowF), tx)
+			resultIds = processResults(
+				ltFilter("premium_to", string(premiumNowF), tx),
+				resultIds,
+			)
 		}
 		if len(premiumNullF) > 0 {
 			hasFilters = 1
-			resultIds = nullFilter("premium", string(premiumNullF), tx)
+			resultIds = processResults(
+				nullFilter("premium", string(premiumNullF), tx),
+				resultIds,
+			)
 		}
 		if hasFilters == 0 {
 			_ = tx.Descend("id", func(key, val string) bool {
@@ -254,8 +338,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				return len(resultIds) < limit
 			})
 		}
-
-		// TODO: intersect results after each filter
 
 		return nil
 	})
@@ -355,7 +437,7 @@ func containsFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	origin := strings.Split(fVal, ",")
 
 	_ = tx.Ascend(fKey, func(key, val string) bool {
-		result := sliceIntersection(origin, strings.Split(val, ","))
+		result := stringSliceIntersection(origin, strings.Split(val, ","))
 		if len(result) > 0 {
 			resultIds = append(resultIds, GetIdFromKey(key))
 		}
@@ -365,8 +447,33 @@ func containsFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	return resultIds
 }
 
-func sliceIntersection(a, b []string) (c []string) {
+func processResults(results []int, original []int) []int {
+	if len(original) > 0 {
+		original = intSliceIntersection(results, original)
+	} else {
+		original = results
+	}
+
+	return original
+}
+
+func stringSliceIntersection(a, b []string) (c []string) {
 	m := make(map[string]bool)
+
+	for _, item := range a {
+		m[item] = true
+	}
+
+	for _, item := range b {
+		if _, ok := m[item]; ok {
+			c = append(c, item)
+		}
+	}
+	return
+}
+
+func intSliceIntersection(a, b []int) (c []int) {
+	m := make(map[int]bool)
 
 	for _, item := range a {
 		m[item] = true
