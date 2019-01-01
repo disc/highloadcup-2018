@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin/json"
 	"github.com/tidwall/buntdb"
 	"github.com/valyala/fasthttp"
 )
@@ -45,7 +45,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	// ignore interests, likes
 	responseProperties := []string{
-		"email",
+		"email", "interests",
 	}
 
 	limit := 0
@@ -347,7 +347,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	// order by ID desc
 	// apply limit
 	sort.Sort(sort.Reverse(sort.IntSlice(resultIds)))
-	if len(resultIds) > 0 && len(resultIds) > limit {
+	if len(resultIds) > 0 && limit > 0 && len(resultIds) > limit {
 		resultIds = resultIds[0:limit]
 	}
 
@@ -395,24 +395,6 @@ func gtFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	return resultIds
 }
 
-func anyFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
-	resultIds := make([]int, 0)
-	fMap := make(map[string]int, 0)
-	if len(fVal) > 0 {
-		for _, fnameVal := range strings.Split(fVal, ",") {
-			fMap[string(fnameVal)] = 1
-		}
-	}
-	_ = tx.Ascend(fKey, func(key, val string) bool {
-		if _, ok := fMap[val]; ok {
-			resultIds = append(resultIds, GetIdFromKey(key))
-		}
-		return true
-	})
-
-	return resultIds
-}
-
 func nullFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);
 	resultIds := make([]int, 0)
@@ -431,18 +413,26 @@ func nullFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	return resultIds
 }
 
+func anyFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+	resultIds := make([]int, 0)
+
+	_ = strings.Split(fVal, ",")
+
+	//if valid {
+	//	resultIds = append(resultIds, GetIdFromKey(key))
+	//}
+
+	return resultIds
+}
+
 func containsFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	resultIds := make([]int, 0)
 
-	origin := strings.Split(fVal, ",")
+	_ = strings.Split(fVal, ",")
 
-	_ = tx.Ascend(fKey, func(key, val string) bool {
-		result := stringSliceIntersection(origin, strings.Split(val, ","))
-		if len(result) > 0 {
-			resultIds = append(resultIds, GetIdFromKey(key))
-		}
-		return true
-	})
+	//if valid {
+	//	resultIds = append(resultIds, GetIdFromKey(key))
+	//}
 
 	return resultIds
 }

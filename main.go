@@ -40,6 +40,7 @@ func initDB() {
 		err = tx.CreateIndex("birth", "acc:*:birth", buntdb.IndexInt)
 		err = tx.CreateIndex("birth_year", "acc:*:birth:year", buntdb.IndexInt)
 		err = tx.CreateIndex("premium_to", "acc:*:premium:to", buntdb.IndexInt)
+		err = tx.CreateIndex("interests", "acc:*:interests", buntdb.IndexString)
 		// todo: interests
 		// todo: likes
 
@@ -85,24 +86,28 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 
 	isGetRequest := ctx.IsGet()
 
-	latestChar := path[len(path)-1]
-
 	if isGetRequest {
-		if path[15] == 'r' {
+		if len(path) > 15 && path[15] == 'r' {
 			// filter
 			filterHandler(ctx)
 			return
 		}
-		if latestChar == 'p' {
-			// filter
+		if len(path) > 14 && path[14] == 'p' {
+			// group
+			//FIXME
+			ctx.Success("application/json", []byte("{\"groups\":[]}"))
 			return
 		}
-		if latestChar == 'd' {
+		if len(path) > 23 && path[23] == 'd' {
 			// recommend
+			//FIXME
+			ctx.Success("application/json", []byte("{\"accounts\":[]}"))
 			return
 		}
-		if latestChar == 't' {
-			// recommend
+		if len(path) > 21 && path[21] == 't' {
+			// suggest
+			//FIXME
+			ctx.Success("application/json", []byte("{\"accounts\":[]}"))
 			return
 		}
 		// 404

@@ -102,6 +102,9 @@ func UpdateAccount(data map[string]interface{}) {
 		for _, key := range columnList {
 			if value, ok := data[key]; ok {
 				val := fmt.Sprintf("%v", value)
+				if key == "interests" {
+					//log.Printf("%#v", data[key])
+				}
 				_, _, err := tx.Set(BuildKey(data["id"], key), val, nil)
 				if err != nil {
 					log.Fatal("Setting error", err)
