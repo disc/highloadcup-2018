@@ -20,8 +20,6 @@ var (
 
 	db *buntdb.DB
 
-	accountsMap = AccountMap{accounts: make(map[uint]*Account)}
-
 	now = int(time.Now().Unix())
 
 	log = logrus.New()

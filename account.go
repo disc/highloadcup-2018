@@ -4,55 +4,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/tidwall/buntdb"
 )
 
 var columnList = []string{"id", "email", "fname", "sname", "phone", "sex", "birth", "country", "city", "joined", "status", "interests", "premium"}
-
-type Timestamp int32
-
-type Status uint8
-type Sex rune
-
-const (
-	Free    Status = 0
-	Busy    Status = 1
-	Unknown Status = 2
-	Male    Sex    = 'm'
-	Female  Sex    = 'f'
-)
-
-type Interests []string
-
-type Premium struct {
-	Start  Timestamp `json:"start"`
-	Finish Timestamp `json:"finish"`
-}
-
-type Like struct {
-	ID uint      `json:"id"`
-	Ts Timestamp `json:"ts"`
-}
-
-type Account struct {
-	ID      uint      `json:"id"`
-	Email   string    `json:"email"`
-	Fname   string    `json:"fname"`
-	Sname   string    `json:"sname"`
-	Phone   string    `json:"phone"`
-	Sex     Sex       `json:"sex"`
-	Birth   Timestamp `json:"birth"`
-	Country string    `json:"country"`
-	City    string    `json:"city"`
-
-	Joined    Timestamp `json:"joined"`
-	Status    Status    `json:"status"`
-	Interests Interests `json:"interests"`
-	Premium   Premium   `json:"premium"`
-}
 
 type AccountAsMap map[string]string
 
@@ -160,22 +117,4 @@ func UpdateAccount(data map[string]interface{}) {
 		log.Fatalln("Transaction error", err)
 		return
 	}
-}
-
-type AccountMap struct {
-	accounts map[uint]*Account
-	sync.RWMutex
-}
-
-func (a *AccountMap) Get(id uint) *Account {
-	a.RLock()
-	defer a.RUnlock()
-
-	return a.accounts[id]
-}
-
-func (a *AccountMap) Update(account Account) {
-	a.Lock()
-	a.accounts[account.ID] = &account
-	a.Unlock()
 }
