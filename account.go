@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -11,7 +10,7 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
-var columnList = []string{"email", "fname", "sname", "phone", "sex", "birth", "country", "city", "joined", "status", "interests", "premium"}
+var columnList = []string{"id", "email", "fname", "sname", "phone", "sex", "birth", "country", "city", "joined", "status", "interests", "premium"}
 
 type Timestamp int32
 
@@ -57,12 +56,11 @@ type Account struct {
 
 type AccountAsMap map[string]string
 
-func GetIdFromKey(key string) uint {
+func GetIdFromKey(key string) int {
 	chunks := strings.SplitN(key, ":", 3)
-	log.Println(chunks)
 	if len(chunks) > 1 {
 		if id, err := strconv.Atoi(chunks[1]); err == nil {
-			return uint(id)
+			return id
 		}
 	}
 	return 0
@@ -72,7 +70,7 @@ func BuildKey(id interface{}, key string) string {
 	return fmt.Sprintf("acc:%v:%s", id, key)
 }
 
-func GetAccount(id uint, columns []string) AccountAsMap {
+func GetAccount(id int, columns []string) AccountAsMap {
 	result := AccountAsMap{}
 
 	if len(columns) == 0 {
@@ -88,6 +86,8 @@ func GetAccount(id uint, columns []string) AccountAsMap {
 		return nil
 	})
 
+	result["id"] = fmt.Sprintf("%v", id)
+
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -97,33 +97,39 @@ func GetAccount(id uint, columns []string) AccountAsMap {
 
 func UpdateAccount(data map[string]interface{}) {
 	err := db.Update(func(tx *buntdb.Tx) error {
-		for _, key := range columnList {
-			if value, ok := data[key]; ok {
-				val := fmt.Sprintf("%v", value)
-				_, _, err := tx.Set(BuildKey(data["id"], key), val, nil)
-				if err != nil {
-					log.Fatal("Set error", err)
-				}
-			}
-		}
 		// email-domain
 		if email, ok := data["email"]; ok {
 			email := fmt.Sprintf("%v", email)
 			components := strings.Split(email, "@")
 			domain := components[1]
-			tx.Set(BuildKey(data["id"], "email:domain"), domain, nil)
+			_, _, err := tx.Set(BuildKey(data["id"], "email:domain"), domain, nil)
+			if err != nil {
+				log.Fatal("Email-domain setting error", err)
+			}
 
 		}
 		// birth-year
 		if birth, ok := data["birth"]; ok {
-			birth := fmt.Sprintf("%v", birth)
-			log.Fatalln(data["id"], birth, data["birth"], reflect.TypeOf(data["birth"]))
-			i, err := strconv.ParseInt(birth, 10, 64)
+			//TODO: Rewrite way of getting birth date (float -> string)
+			birthF64 := birth.(float64)
+			birth := strconv.FormatFloat(birthF64, 'f', 0, 64)
+			tm := time.Unix(int64(birthF64), 0)
+			data["birth"] = string(birth)
+
+			_, _, err := tx.Set(BuildKey(data["id"], "birth:year"), tm.Format("2006"), nil)
 			if err != nil {
-				panic(err)
+				log.Fatal("Birth-year setting error", err)
 			}
-			tm := time.Unix(i, 0)
-			tx.Set(BuildKey(data["id"], "birth:year"), string(tm.Year()), nil)
+		}
+
+		for _, key := range columnList {
+			if value, ok := data[key]; ok {
+				val := fmt.Sprintf("%v", value)
+				_, _, err := tx.Set(BuildKey(data["id"], key), val, nil)
+				if err != nil {
+					log.Fatal("Setting error", err)
+				}
+			}
 		}
 
 		return nil

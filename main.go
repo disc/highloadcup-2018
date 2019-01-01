@@ -29,10 +29,10 @@ var (
 
 func initDB() {
 	err := db.Update(func(tx *buntdb.Tx) error {
-		err := tx.CreateIndex("sex", "acc:*:sex", buntdb.IndexString)
+		err := tx.CreateIndex("id", "acc:*:id", buntdb.IndexInt)
+		err = tx.CreateIndex("sex", "acc:*:sex", buntdb.IndexString)
 		err = tx.CreateIndex("email", "acc:*:email", buntdb.IndexString)
 		err = tx.CreateIndex("email_domain", "acc:*:email:domain", buntdb.IndexString)
-		// todo: email domain
 		err = tx.CreateIndex("status", "acc:*:status", buntdb.IndexString)
 		err = tx.CreateIndex("fname", "acc:*:fname", buntdb.IndexString)
 		err = tx.CreateIndex("sname", "acc:*:sname", buntdb.IndexString)
