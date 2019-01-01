@@ -36,15 +36,14 @@ func initDB() {
 		err = tx.CreateIndex("status", "acc:*:status", buntdb.IndexString)
 		err = tx.CreateIndex("fname", "acc:*:fname", buntdb.IndexString)
 		err = tx.CreateIndex("sname", "acc:*:sname", buntdb.IndexString)
-		// todo: phone code
+		err = tx.CreateIndex("phone_code", "acc:*:phone:code", buntdb.IndexInt)
 		err = tx.CreateIndex("country", "acc:*:country", buntdb.IndexString)
 		err = tx.CreateIndex("city", "acc:*:city", buntdb.IndexString)
 		err = tx.CreateIndex("birth", "acc:*:birth", buntdb.IndexInt)
 		err = tx.CreateIndex("birth_year", "acc:*:birth:year", buntdb.IndexInt)
-		// todo: birth year
+		err = tx.CreateIndex("premium_to", "acc:*:premium:to", buntdb.IndexInt)
 		// todo: interests
 		// todo: likes
-		// todo: premium
 
 		return err
 	})

@@ -121,6 +121,26 @@ func UpdateAccount(data map[string]interface{}) {
 				log.Fatal("Birth-year setting error", err)
 			}
 		}
+		// phone_code
+		if phone, ok := data["phone"]; ok {
+			phoneCode := strings.SplitN(strings.SplitN(phone.(string), "(", 2)[1], ")", 2)[0]
+			_, _, err := tx.Set(BuildKey(data["id"], "phone:code"), phoneCode, nil)
+			if err != nil {
+				log.Fatal("Birth-year setting error", err)
+			}
+		}
+		// premium-to
+		if premium, ok := data["premium"]; ok {
+			premiumMap, _ := premium.(map[string]interface{})
+			//TODO: Rewrite way of getting birth date (float -> string)
+			premiumFinishF64 := premiumMap["finish"].(float64)
+			premiumFinish := strconv.FormatFloat(premiumFinishF64, 'f', 0, 64)
+
+			_, _, err := tx.Set(BuildKey(data["id"], "premium:to"), string(premiumFinish), nil)
+			if err != nil {
+				log.Fatal("Birth-year setting error", err)
+			}
+		}
 
 		for _, key := range columnList {
 			if value, ok := data[key]; ok {
