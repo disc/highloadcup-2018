@@ -140,7 +140,7 @@ func parseDataDir(dirPath string) {
 
 func parseAccountsMap(fileBytes []byte) {
 	type jsonKey struct {
-		Accounts []map[string]interface{}
+		Accounts []AccountRequest
 	}
 
 	var data jsonKey

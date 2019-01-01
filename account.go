@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,6 +13,23 @@ import (
 var columnList = []string{"id", "email", "fname", "sname", "phone", "sex", "birth", "country", "city", "joined", "status", "interests", "premium"}
 
 type Account map[string]string
+
+type AccountRequest struct {
+	ID      uint   `json:"id"`
+	Email   string `json:"email,omitempty"`
+	Fname   string `json:"fname,omitempty"`
+	Sname   string `json:"sname,omitempty"`
+	Phone   string `json:"phone,omitempty"`
+	Sex     string `json:"sex,omitempty"`
+	Birth   int64  `json:"birth,omitempty"`
+	Country string `json:"country,omitempty"`
+	City    string `json:"city,omitempty"`
+
+	Joined    int32  `json:"joined,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Interests string `json:"interests,string,omitempty"`
+	Premium   string `json:"premium,string,omitempty"`
+}
 
 func GetIdFromKey(key string) int {
 	chunks := strings.SplitN(key, ":", 3)
@@ -52,65 +70,66 @@ func GetAccount(id int, columns []string) Account {
 	return result
 }
 
-func UpdateAccount(data map[string]interface{}) {
+func UpdateAccount(data AccountRequest) {
 	err := db.Update(func(tx *buntdb.Tx) error {
 		// email-domain
-		if email, ok := data["email"]; ok {
-			email := fmt.Sprintf("%v", email)
-			components := strings.Split(email, "@")
+		if data.Email != "" {
+			components := strings.Split(data.Email, "@")
 			domain := components[1]
-			_, _, err := tx.Set(BuildKey(data["id"], "email:domain"), domain, nil)
+			_, _, err := tx.Set(BuildKey(data.ID, "email:domain"), domain, nil)
 			if err != nil {
 				log.Fatal("Email-domain setting error", err)
 			}
 
 		}
 		// birth-year
-		if birth, ok := data["birth"]; ok {
+		if &data.Birth != nil {
 			//TODO: Rewrite way of getting birth date (float -> string)
-			birthF64 := birth.(float64)
-			birth := strconv.FormatFloat(birthF64, 'f', 0, 64)
-			tm := time.Unix(int64(birthF64), 0)
-			data["birth"] = string(birth)
+			tm := time.Unix(data.Birth, 0)
 
-			_, _, err := tx.Set(BuildKey(data["id"], "birth:year"), tm.Format("2006"), nil)
+			_, _, err := tx.Set(BuildKey(data.ID, "birth:year"), tm.Format("2006"), nil)
 			if err != nil {
 				log.Fatal("Birth-year setting error", err)
 			}
 		}
 		// phone_code
-		if phone, ok := data["phone"]; ok {
-			phoneCode := strings.SplitN(strings.SplitN(phone.(string), "(", 2)[1], ")", 2)[0]
-			_, _, err := tx.Set(BuildKey(data["id"], "phone:code"), phoneCode, nil)
+		if &data.Phone != nil {
+			log.Println(data.Phone, &data.Phone)
+			phoneCode := strings.SplitN(strings.SplitN(data.Phone, "(", 2)[1], ")", 2)[0]
+			_, _, err := tx.Set(BuildKey(data.ID, "phone:code"), phoneCode, nil)
 			if err != nil {
 				log.Fatal("Birth-year setting error", err)
 			}
 		}
 		// premium-to
-		if premium, ok := data["premium"]; ok {
-			premiumMap, _ := premium.(map[string]interface{})
-			//TODO: Rewrite way of getting birth date (float -> string)
-			premiumFinishF64 := premiumMap["finish"].(float64)
-			premiumFinish := strconv.FormatFloat(premiumFinishF64, 'f', 0, 64)
+		if &data.Premium != nil {
+			var objmap map[string]*json.RawMessage
+			json.Unmarshal([]byte(data.Premium), &objmap)
 
-			_, _, err := tx.Set(BuildKey(data["id"], "premium:to"), string(premiumFinish), nil)
+			log.Println(objmap["finish"])
+
+			//TODO: Rewrite way of getting birth date (float -> string)
+			//premiumFinishF64 := objmap["finish"].(float64)
+			//premiumFinish := strconv.FormatFloat(premiumFinishF64, 'f', 0, 64)
+
+			_, _, err := tx.Set(BuildKey(data.ID, "premium:to"), string("1"), nil)
 			if err != nil {
 				log.Fatal("Birth-year setting error", err)
 			}
 		}
 
-		for _, key := range columnList {
-			if value, ok := data[key]; ok {
-				val := fmt.Sprintf("%v", value)
-				if key == "interests" {
-					//log.Printf("%#v", data[key])
-				}
-				_, _, err := tx.Set(BuildKey(data["id"], key), val, nil)
-				if err != nil {
-					log.Fatal("Setting error", err)
-				}
-			}
-		}
+		//for _, key := range columnList {
+		//	if value, ok := data[key]; ok {
+		//		val := fmt.Sprintf("%v", value)
+		//		if key == "interests" {
+		//			//log.Printf("%#v", data[key])
+		//		}
+		//		_, _, err := tx.Set(BuildKey(data["id"], key), val, nil)
+		//		if err != nil {
+		//			log.Fatal("Setting error", err)
+		//		}
+		//	}
+		//}
 
 		return nil
 

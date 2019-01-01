@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,7 +46,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	// ignore interests, likes
 	responseProperties := []string{
-		"email", "interests",
+		"email",
 	}
 
 	limit := 0
@@ -113,8 +114,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	likesContainsF := ctx.QueryArgs().Peek("likes_contains")
 
 	premiumNowF := ctx.QueryArgs().Peek("premium_now")
-	premiumNullF := ctx.QueryArgs().Peek("premium_now")
-	if len(likesContainsF) > 0 {
+	premiumNullF := ctx.QueryArgs().Peek("premium_null")
+	if len(premiumNowF) > 0 || len(premiumNullF) > 0 {
 		responseProperties = append(responseProperties, "premium")
 	}
 
@@ -317,10 +318,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				resultIds,
 			)
 		}
-		if len(premiumNowF) > 0 {
+		if string(premiumNowF) == "1" {
 			hasFilters = 1
 			resultIds = processResults(
-				ltFilter("premium_to", string(premiumNowF), tx),
+				ltFilter("premium_to", fmt.Sprintf("%v", now), tx),
 				resultIds,
 			)
 		}
@@ -379,7 +380,7 @@ func ltFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	resultIds := make([]int, 0)
 	_ = tx.AscendLessThan(fKey, fVal, func(key, val string) bool {
 		resultIds = append(resultIds, GetIdFromKey(key))
-		return true
+		return true //TODO: get not more than limit
 	})
 
 	return resultIds
