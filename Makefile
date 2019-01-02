@@ -1,9 +1,10 @@
 build:
 	docker build -t hlcup .
 run-local: build
-	docker run --rm -p 8080:80 -v $$(pwd)/data.zip:/tmp/data/data.zip -t hlcup
+	@docker rm -f $$(docker ps -qa -f name=hlcup) || true
+	docker run --name hlcup --rm -p 8080:80 -v $$(pwd)/data.zip:/tmp/data/data.zip -t hlcup
 deploy: build
-	docker tag golang-app stor.highloadcup.ru/accounts/rebel_butterfly
+	docker tag hlcup stor.highloadcup.ru/accounts/rebel_butterfly
 	docker push stor.highloadcup.ru/accounts/rebel_butterfly
 
 run: app-unzip
@@ -16,6 +17,3 @@ app-use-options:
     then \
          cp /tmp/data/options.txt $$(pwd)/data/ > /dev/null ; \
     fi;
-
-tester-phase-1:
-    highloadcup_tester -addr http://127.0.0.1:3000 -hlcupdocs ~/Downloads/test_accounts_251218 -test -phase 1

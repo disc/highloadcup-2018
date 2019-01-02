@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	addr = ":3000"
+	addr = ":80"
 
 	db *buntdb.DB
 
