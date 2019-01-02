@@ -17,3 +17,5 @@ app-use-options:
     then \
          cp /tmp/data/options.txt $$(pwd)/data/ > /dev/null ; \
     fi;
+tester:
+	highloadcup_tester -addr http://127.0.0.1:8080 -hlcupdocs ~/Downloads/test_accounts_291218 -test -phase 1

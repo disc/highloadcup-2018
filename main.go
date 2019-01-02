@@ -2,12 +2,13 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/Sirupsen/logrus"
 
@@ -27,20 +28,32 @@ var (
 
 func initDB() {
 	err := db.Update(func(tx *buntdb.Tx) error {
-		err := tx.CreateIndex("id", "acc:*:id", buntdb.IndexInt)
-		err = tx.CreateIndex("sex", "acc:*:sex", buntdb.IndexString)
-		err = tx.CreateIndex("email", "acc:*:email", buntdb.IndexString)
-		err = tx.CreateIndex("email_domain", "acc:*:email:domain", buntdb.IndexString)
-		err = tx.CreateIndex("status", "acc:*:status", buntdb.IndexString)
-		err = tx.CreateIndex("fname", "acc:*:fname", buntdb.IndexString)
-		err = tx.CreateIndex("sname", "acc:*:sname", buntdb.IndexString)
-		err = tx.CreateIndex("phone_code", "acc:*:phone:code", buntdb.IndexInt)
-		err = tx.CreateIndex("country", "acc:*:country", buntdb.IndexString)
-		err = tx.CreateIndex("city", "acc:*:city", buntdb.IndexString)
-		err = tx.CreateIndex("birth", "acc:*:birth", buntdb.IndexInt)
-		err = tx.CreateIndex("birth_year", "acc:*:birth:year", buntdb.IndexInt)
-		err = tx.CreateIndex("premium_to", "acc:*:premium:to", buntdb.IndexInt)
-		err = tx.CreateIndex("interests", "acc:*:interests", buntdb.IndexString)
+		//err := tx.CreateIndex("id", "acc:*:id", buntdb.IndexInt)
+		err := tx.CreateIndex("sex", "acc:*", buntdb.IndexJSON("sex"))
+		err = tx.CreateIndex("email", "acc:*", buntdb.IndexJSON("email"))
+		err = tx.CreateIndex("status", "acc:*", buntdb.IndexJSON("status"))
+		err = tx.CreateIndex("fname", "acc:*", buntdb.IndexJSON("fname"))
+		err = tx.CreateIndex("sname", "acc:*", buntdb.IndexJSON("sname"))
+		err = tx.CreateIndex("country", "acc:*", buntdb.IndexJSON("country"))
+		err = tx.CreateIndex("city", "acc:*", buntdb.IndexJSON("city"))
+		err = tx.CreateIndex("birth", "acc:*", buntdb.IndexJSON("birth"))
+		err = tx.CreateIndex("phone", "acc:*", buntdb.IndexJSON("phone"))
+		err = tx.CreateIndex("phone_code", "phone_code:*", buntdb.IndexInt)
+		err = tx.CreateIndex("birth_year", "birth_year:*", buntdb.IndexInt)
+		err = tx.CreateIndex("premium_to", "premium_to:*", buntdb.IndexInt)
+
+		//err = tx.CreateIndex("email", "acc:*:email", buntdb.IndexString)
+		//err = tx.CreateIndex("email_domain", "acc:*:email:domain", buntdb.IndexString)
+		//err = tx.CreateIndex("status", "acc:*:status", buntdb.IndexString)
+		//err = tx.CreateIndex("fname", "acc:*:fname", buntdb.IndexString)
+		//err = tx.CreateIndex("sname", "acc:*:sname", buntdb.IndexString)
+		//err = tx.CreateIndex("phone_code", "acc:*:phone:code", buntdb.IndexInt)
+		//err = tx.CreateIndex("country", "acc:*:country", buntdb.IndexString)
+		//err = tx.CreateIndex("city", "acc:*:city", buntdb.IndexString)
+		//err = tx.CreateIndex("birth", "acc:*:birth", buntdb.IndexInt)
+		//err = tx.CreateIndex("birth_year", "acc:*:birth:year", buntdb.IndexInt)
+		//err = tx.CreateIndex("premium_to", "acc:*:premium:to", buntdb.IndexInt)
+		//err = tx.CreateIndex("interests", "acc:*:interests", buntdb.IndexString)
 		// todo: interests
 		// todo: likes
 
@@ -86,26 +99,28 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 
 	isGetRequest := ctx.IsGet()
 
+	pathLen := len(path)
+
 	if isGetRequest {
-		if len(path) > 15 && path[15] == 'r' {
-			// filter
-			filterHandler(ctx)
-			return
-		}
-		if len(path) > 14 && path[14] == 'p' {
+		if pathLen > 14 && path[14] == 'p' {
 			// group
 			//FIXME
 			ctx.Success("application/json", []byte("{\"groups\":[]}"))
 			return
 		}
-		if len(path) > 23 && path[23] == 'd' {
-			// recommend
+		if pathLen > 15 && path[15] == 'r' {
+			// filter
+			filterHandler(ctx)
+			return
+		}
+		if pathLen > 21 && path[21] == 't' {
+			// suggest
 			//FIXME
 			ctx.Success("application/json", []byte("{\"accounts\":[]}"))
 			return
 		}
-		if len(path) > 21 && path[21] == 't' {
-			// suggest
+		if pathLen > 23 && path[23] == 'd' {
+			// recommend
 			//FIXME
 			ctx.Success("application/json", []byte("{\"accounts\":[]}"))
 			return
@@ -139,16 +154,14 @@ func parseDataDir(dirPath string) {
 }
 
 func parseAccountsMap(fileBytes []byte) {
-	type jsonKey struct {
-		Accounts []map[string]interface{}
+	result := gjson.GetBytes(fileBytes, "accounts")
+	for _, account := range result.Array() {
+		UpdateAccount(&account)
 	}
 
-	var data jsonKey
-	_ = json.Unmarshal(fileBytes, &data)
-
-	for _, account := range data.Accounts {
-		UpdateAccount(account)
-	}
+	//for _, account := range data.Accounts {
+	//	UpdateAccount(account)
+	//}
 }
 
 func parseOptions(filename string) {

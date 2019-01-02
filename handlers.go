@@ -7,12 +7,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/tidwall/buntdb"
 	"github.com/valyala/fasthttp"
 )
 
 type FilterResponse struct {
-	Accounts []Account `json:"accounts"`
+	Accounts []Account `json:"accounts,string"`
 }
 
 func filterHandler(ctx *fasthttp.RequestCtx) {
@@ -46,7 +48,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	// ignore interests, likes
 	responseProperties := []string{
-		"email",
+		"id", "email",
 	}
 
 	limit := 0
@@ -71,33 +73,33 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	fnameEqF := ctx.QueryArgs().Peek("fname_eq")
 	fnameAnyF := ctx.QueryArgs().Peek("fname_any")
 	fnameNullF := ctx.QueryArgs().Peek("fname_null")
-	if len(fnameEqF) > 0 || len(fnameAnyF) > 0 || len(fnameNullF) > 0 {
+	if len(fnameEqF) > 0 || len(fnameAnyF) > 0 {
 		responseProperties = append(responseProperties, "fname")
 	}
 
 	snameEqF := ctx.QueryArgs().Peek("sname_eq")
 	snameStartsF := ctx.QueryArgs().Peek("sname_starts")
 	snameNullF := ctx.QueryArgs().Peek("sname_null")
-	if len(snameEqF) > 0 || len(snameStartsF) > 0 || len(snameNullF) > 0 {
+	if len(snameEqF) > 0 || len(snameStartsF) > 0 {
 		responseProperties = append(responseProperties, "sname")
 	}
 
 	phoneCodeF := ctx.QueryArgs().Peek("phone_code")
 	phoneNullF := ctx.QueryArgs().Peek("phone_null")
-	if len(phoneCodeF) > 0 || len(phoneNullF) > 0 {
+	if len(phoneCodeF) > 0 {
 		responseProperties = append(responseProperties, "phone")
 	}
 
 	countryEqF := ctx.QueryArgs().Peek("country_eq")
 	countryNullF := ctx.QueryArgs().Peek("country_null")
-	if len(countryEqF) > 0 || len(countryNullF) > 0 {
+	if len(countryEqF) > 0 {
 		responseProperties = append(responseProperties, "country")
 	}
 
 	cityEqF := ctx.QueryArgs().Peek("city_eq")
 	cityAnyF := ctx.QueryArgs().Peek("city_any")
 	cityNullF := ctx.QueryArgs().Peek("city_null")
-	if len(cityEqF) > 0 || len(cityAnyF) > 0 || len(cityNullF) > 0 {
+	if len(cityEqF) > 0 || len(cityAnyF) > 0 {
 		responseProperties = append(responseProperties, "city")
 	}
 
@@ -115,19 +117,19 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	premiumNowF := ctx.QueryArgs().Peek("premium_now")
 	premiumNullF := ctx.QueryArgs().Peek("premium_null")
-	if len(premiumNowF) > 0 || len(premiumNullF) > 0 {
+	if len(premiumNowF) > 0 {
 		responseProperties = append(responseProperties, "premium")
 	}
 
 	var resultIds []int
-	var results = make([]Account, 0)
 
 	hasFilters := 0
 	_ = db.View(func(tx *buntdb.Tx) error {
 		if len(sexEqF) > 0 {
 			hasFilters = 1
+			value := `{"sex":"` + string(sexEqF) + `"}`
 			resultIds = processResults(
-				eqFilter("sex", string(sexEqF), tx),
+				eqFilter("sex", value, tx),
 				resultIds,
 			)
 		}
@@ -140,22 +142,25 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(emailLtF) > 0 {
 			hasFilters = 1
+			value := `{"email":"` + string(emailLtF) + `"}`
 			resultIds = processResults(
-				ltFilter("email", string(emailLtF), tx),
+				ltFilter("email", value, tx),
 				resultIds,
 			)
 		}
 		if len(emailGtF) > 0 {
 			hasFilters = 1
+			value := `{"email":"` + string(emailGtF) + `"}`
 			resultIds = processResults(
-				gtFilter("email", string(emailGtF), tx),
+				gtFilter("email", value, tx),
 				resultIds,
 			)
 		}
 		if len(statusEqF) > 0 {
 			hasFilters = 1
+			value := `{"status":"` + string(statusEqF) + `"}`
 			resultIds = processResults(
-				eqFilter("status", string(statusEqF), tx),
+				eqFilter("status", value, tx),
 				resultIds,
 			)
 		}
@@ -177,8 +182,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(fnameEqF) > 0 {
 			hasFilters = 1
+			value := `{"fname":"` + string(fnameEqF) + `"}`
 			resultIds = processResults(
-				eqFilter("fname", string(fnameEqF), tx),
+				eqFilter("fname", value, tx),
 				resultIds,
 			)
 		}
@@ -191,15 +197,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(fnameNullF) > 0 {
 			hasFilters = 1
+			value := string(fnameNullF)
+			if value == "0" {
+				responseProperties = append(responseProperties, "fname")
+			}
 			resultIds = processResults(
-				nullFilter("fname", string(fnameNullF), tx),
+				nullFilter("fname", value, tx),
 				resultIds,
 			)
 		}
 		if len(snameEqF) > 0 {
 			hasFilters = 1
+			value := `{"sname":"` + string(snameEqF) + `"}`
 			resultIds = processResults(
-				eqFilter("sname", string(snameEqF), tx),
+				eqFilter("sname", value, tx),
 				resultIds,
 			)
 		}
@@ -222,8 +233,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(snameNullF) > 0 {
 			hasFilters = 1
+			value := string(snameNullF)
+			if value == "0" {
+				responseProperties = append(responseProperties, "sname")
+			}
 			resultIds = processResults(
-				nullFilter("sname", string(snameNullF), tx),
+				nullFilter("sname", value, tx),
 				resultIds,
 			)
 		}
@@ -236,29 +251,40 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(phoneNullF) > 0 {
 			hasFilters = 1
+			value := string(phoneNullF)
+			if value == "0" {
+				responseProperties = append(responseProperties, "phone")
+			}
 			resultIds = processResults(
-				nullFilter("phone", string(phoneNullF), tx),
+				nullFilter("phone", value, tx),
 				resultIds,
 			)
 		}
 		if len(countryEqF) > 0 {
 			hasFilters = 1
+			value := `{"country":"` + string(countryEqF) + `"}`
 			resultIds = processResults(
-				eqFilter("country", string(countryEqF), tx),
+				eqFilter("country", value, tx),
 				resultIds,
 			)
 		}
 		if len(countryNullF) > 0 {
 			hasFilters = 1
+			value := string(countryNullF)
+
+			if value == "0" {
+				responseProperties = append(responseProperties, "country")
+			}
 			resultIds = processResults(
-				nullFilter("country", string(countryNullF), tx),
+				nullFilter("country", value, tx),
 				resultIds,
 			)
 		}
 		if len(cityEqF) > 0 {
 			hasFilters = 1
+			value := `{"city":"` + string(cityEqF) + `"}`
 			resultIds = processResults(
-				eqFilter("city", string(cityEqF), tx),
+				eqFilter("city", value, tx),
 				resultIds,
 			)
 		}
@@ -271,29 +297,35 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(cityNullF) > 0 {
 			hasFilters = 1
+			value := string(cityNullF)
+			if value == "0" {
+				responseProperties = append(responseProperties, "city")
+			}
 			resultIds = processResults(
-				nullFilter("city", string(cityNullF), tx),
+				nullFilter("city", value, tx),
 				resultIds,
 			)
 		}
 		if len(birthLtF) > 0 {
 			hasFilters = 1
+			value := `{"birth":"` + string(birthLtF) + `"}`
 			resultIds = processResults(
-				ltFilter("birth", string(birthLtF), tx),
+				ltFilter("birth", value, tx),
 				resultIds,
 			)
 		}
 		if len(birthGtF) > 0 {
 			hasFilters = 1
+			value := `{"birth":"` + string(birthGtF) + `"}`
 			resultIds = processResults(
-				gtFilter("birth", string(birthGtF), tx),
+				gtFilter("birth", value, tx),
 				resultIds,
 			)
 		}
 		if len(birthYearF) > 0 {
 			hasFilters = 1
 			resultIds = processResults(
-				eqFilter("birth_year", string(statusEqF), tx),
+				eqFilter("birth_year", string(birthYearF), tx),
 				resultIds,
 			)
 		}
@@ -327,8 +359,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(premiumNullF) > 0 {
 			hasFilters = 1
+			value := string(premiumNullF)
+			if value == "0" {
+				responseProperties = append(responseProperties, "premium")
+			}
 			resultIds = processResults(
-				nullFilter("premium", string(premiumNullF), tx),
+				nullFilter("premium", value, tx),
 				resultIds,
 			)
 		}
@@ -352,14 +388,21 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		resultIds = resultIds[0:limit]
 	}
 
+	var results = make([]Account, 0)
 	for _, id := range resultIds {
-		results = append(results, GetAccount(id, responseProperties))
+		parsed := gjson.ParseBytes(GetAccount(int64(id)))
+		resultMap := parsed.Map()
+
+		result := make(Account, 0)
+		for _, key := range responseProperties {
+			result[key] = resultMap[key].Value()
+		}
+		results = append(results, result)
 	}
 
 	response := &FilterResponse{
 		Accounts: results,
 	}
-
 	jsonData, _ := json.Marshal(response)
 
 	ctx.Success("application/json; charset=utf-8", jsonData)
@@ -399,17 +442,34 @@ func gtFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 func nullFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);
 	resultIds := make([]int, 0)
-	_ = tx.Ascend(fKey, func(key, val string) bool {
-		if fVal == "0" && len(val) > 0 {
-			resultIds = append(resultIds, GetIdFromKey(key))
-			return true
-		}
-		if fVal == "1" && len(val) == 0 {
-			resultIds = append(resultIds, GetIdFromKey(key))
-			return len(val) == 0
-		}
-		return true
-	})
+
+	if fVal == "0" {
+		_ = tx.Descend(fKey, func(key, val string) bool {
+			value := gjson.Parse(val).Get(fKey)
+
+			isNotEmpty := value.Exists() || value.String() != ""
+
+			if isNotEmpty {
+				resultIds = append(resultIds, GetIdFromKey(key))
+			}
+
+			return isNotEmpty
+		})
+	}
+
+	if fVal == "1" {
+		_ = tx.Ascend(fKey, func(key, val string) bool {
+			value := gjson.Parse(val).Get(fKey)
+
+			isEmpty := !value.Exists() || value.String() == ""
+
+			if isEmpty {
+				resultIds = append(resultIds, GetIdFromKey(key))
+			}
+
+			return isEmpty
+		})
+	}
 
 	return resultIds
 }
