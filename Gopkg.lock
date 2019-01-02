@@ -126,14 +126,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:10405139b45e3a97a3842c93984710e30466eb933545f219ad3f5e45246973b4"
+  digest = "1:191cccd950a4aeadb60306062f2bdc2f924d750d0156ec6c691b17211bfd7349"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "9a3f9b0469bbc6b8802087ae5c0af9f61502de01"
+  revision = "82a175fd1598e8a172e58ebdf5ed262bb29129e5"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -141,6 +141,7 @@
   input-imports = [
     "github.com/Sirupsen/logrus",
     "github.com/tidwall/buntdb",
+    "github.com/tidwall/gjson",
     "github.com/valyala/fasthttp",
   ]
   solver-name = "gps-cdcl"

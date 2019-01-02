@@ -166,17 +166,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if len(statusNeqF) > 0 {
 			hasFilters = 1
-			var foundResults []int
-			_ = tx.Ascend("status", func(key, val string) bool {
-				// TODO: Rewrite
-				if val != string(statusEqF) {
-					foundResults = append(resultIds, GetIdFromKey(key))
-				}
-				return true
-			})
-
+			value := string(statusEqF)
 			resultIds = processResults(
-				foundResults,
+				neqFilter("status", value, tx),
 				resultIds,
 			)
 		}
@@ -413,6 +405,21 @@ func eqFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	resultIds := make([]int, 0)
 	_ = tx.AscendEqual(fKey, fVal, func(key, val string) bool {
 		resultIds = append(resultIds, GetIdFromKey(key))
+		return true
+	})
+
+	return resultIds
+}
+
+func neqFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+	resultIds := make([]int, 0)
+	_ = tx.Ascend(fKey, func(key, val string) bool {
+		value := gjson.Parse(val).Get(fKey)
+
+		if value.String() != fVal {
+			resultIds = append(resultIds, GetIdFromKey(key))
+		}
+
 		return true
 	})
 
