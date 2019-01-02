@@ -62,8 +62,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	emailLtF := ctx.QueryArgs().Peek("email_lt")
 	emailGtF := ctx.QueryArgs().Peek("email_gt")
 
-	statusEqF := ctx.QueryArgs().Peek("email_eq")
-	statusNeqF := ctx.QueryArgs().Peek("email_neq")
+	statusEqF := ctx.QueryArgs().Peek("status_eq")
+	statusNeqF := ctx.QueryArgs().Peek("status_neq")
 	if len(statusEqF) > 0 || len(statusNeqF) > 0 {
 		responseProperties = append(responseProperties, "status")
 	}
@@ -362,7 +362,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	jsonData, _ := json.Marshal(response)
 
-	ctx.Success("application/json", jsonData)
+	ctx.Success("application/json; charset=utf-8", jsonData)
 	return
 }
 
