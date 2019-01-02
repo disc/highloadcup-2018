@@ -11,7 +11,7 @@ import (
 
 var columnList = []string{"id", "email", "fname", "sname", "phone", "sex", "birth", "country", "city", "joined", "status", "interests", "premium"}
 
-type Account map[string]string
+type Account map[string]interface{}
 
 func GetIdFromKey(key string) int {
 	chunks := strings.SplitN(key, ":", 3)
@@ -43,7 +43,7 @@ func GetAccount(id int, columns []string) Account {
 		return nil
 	})
 
-	result["id"] = fmt.Sprintf("%v", id)
+	result["id"] = id
 
 	if err != nil {
 		log.Fatalln(err)
