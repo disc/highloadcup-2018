@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/emirpasic/gods/sets/treeset"
 
@@ -163,11 +164,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(statusNeqF) > 0 {
 		hasFilters = 1
-		value := string(statusEqF)
-		resultIds = processResults(
-			neqFilter("status", value),
-			resultIds,
-		)
+		value := string(statusNeqF)
+		tempResults = append(tempResults, neqFilter(statusMap, value))
 	}
 	if len(fnameEqF) > 0 {
 		hasFilters = 1
@@ -402,6 +400,26 @@ func intersectFoundResults(tempResults []*treeset.Set, limit int) []int {
 	return resultIds
 }
 
+func diffFoundResults(ignoreSet *treeset.Set, tempResults []*treeset.Set) *treeset.Set {
+	resultIds := make([]int, 0)
+	for _, tempSet := range tempResults {
+		it := tempSet.Iterator()
+		for it.Next() {
+			value := it.Value()
+
+			if ignoreSet.Contains(value) {
+				continue
+			}
+
+			resultIds = append(resultIds, value.(int))
+		}
+	}
+
+	resultSet := treeset.NewWith(inverseIntComparator)
+
+	return resultSet
+}
+
 func prepareReponse(resultIds []int, responseProperties []string) *FilterResponse {
 	var results = make([]Account, 0)
 	for _, id := range resultIds {
@@ -429,19 +447,20 @@ func eqFilter(sourceMap map[interface{}][]int, value interface{}) []int {
 	return resultIds
 }
 
-func neqFilter(fKey string, fVal string) []int {
-	resultIds := make([]int, 0)
-	//_ = tx.Ascend(fKey, func(key, val string) bool {
-	//	value := gjson.Parse(val).Get(fKey)
-	//
-	//	if value.String() != fVal {
-	//		resultIds = append(resultIds, GetIdFromKey(key))
-	//	}
-	//
-	//	return true
-	//})
+func neqFilter(source map[string]*treeset.Set, value string) *treeset.Set {
+	start := time.Now()
+	sets := make([]*treeset.Set, 0)
+	for key, set := range source {
+		if key == value {
+			continue
+		}
+		sets = append(sets, set)
+	}
+	log.Printf("range sources took %s", time.Since(start))
+	resultSet := diffFoundResults(source[value], sets)
+	log.Printf("nonEQ filter took %s", time.Since(start))
 
-	return resultIds
+	return resultSet
 }
 
 func ltFilter(fKey string, fVal string) []int {
