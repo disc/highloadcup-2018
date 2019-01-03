@@ -171,10 +171,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(fnameEqF) > 0 {
 		hasFilters = 1
-		resultIds = processResults(
-			fnameMap[string(fnameEqF)],
-			resultIds,
-		)
+		if resultSet, ok := fnameMap[string(fnameEqF)]; ok {
+			tempResults = append(tempResults, resultSet)
+		}
 	}
 	if len(fnameAnyF) > 0 {
 		hasFilters = 1
@@ -196,10 +195,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(snameEqF) > 0 {
 		hasFilters = 1
-		resultIds = processResults(
-			snameMap[string(snameEqF)],
-			resultIds,
-		)
+		if resultSet, ok := snameMap[string(snameEqF)]; ok {
+			tempResults = append(tempResults, resultSet)
+		}
 	}
 	if len(snameStartsF) > 0 {
 		hasFilters = 1
@@ -242,10 +240,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(countryEqF) > 0 {
 		hasFilters = 1
-		resultIds = processResults(
-			countryMap[string(countryEqF)],
-			resultIds,
-		)
+		if resultSet, ok := countryMap[string(countryEqF)]; ok {
+			tempResults = append(tempResults, resultSet)
+		}
 	}
 	if len(countryNullF) > 0 {
 		hasFilters = 1
@@ -261,10 +258,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(cityEqF) > 0 {
 		hasFilters = 1
-		resultIds = processResults(
-			cityMap[string(cityEqF)],
-			resultIds,
-		)
+		if resultSet, ok := cityMap[string(cityEqF)]; ok {
+			tempResults = append(tempResults, resultSet)
+		}
 	}
 	if len(cityAnyF) > 0 {
 		hasFilters = 1
@@ -351,6 +347,23 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		//return len(resultIds) < limit
 	}
 
+	resultIds = intersectFoundResults(tempResults, limit)
+
+	// order by ID desc
+	// apply limit
+
+	jsonData := []byte(`{"accounts":[]}`)
+	if len(resultIds) > 0 {
+		jsonData, _ = json.Marshal(prepareReponse(resultIds, responseProperties))
+	}
+
+	// TODO: Use sjson for updates
+	ctx.Success("application/json", jsonData)
+	return
+}
+
+func intersectFoundResults(tempResults []*treeset.Set, limit int) []int {
+	resultIds := make([]int, 0)
 	// find smalest set
 	var smalest *treeset.Set
 	for _, set := range tempResults {
@@ -386,17 +399,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	// order by ID desc
-	// apply limit
-
-	jsonData := []byte(`{"accounts":[]}`)
-	if len(resultIds) > 0 {
-		jsonData, _ = json.Marshal(prepareReponse(resultIds, responseProperties))
-	}
-
-	// TODO: Use sjson for updates
-	ctx.Success("application/json", jsonData)
-	return
+	return resultIds
 }
 
 func prepareReponse(resultIds []int, responseProperties []string) *FilterResponse {

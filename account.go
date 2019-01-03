@@ -24,19 +24,12 @@ var (
 		return -utils.IntComparator(a, b)
 	}
 	accountMap = make(AccountMap, 0)
-	sexMap     = TreeSet{
-		"m": treeset.NewWith(inverseIntComparator),
-		"f": treeset.NewWith(inverseIntComparator),
-	}
-	statusMap = TreeSet{
-		"свободны":   treeset.NewWith(inverseIntComparator),
-		"заняты":     treeset.NewWith(inverseIntComparator),
-		"всё сложно": treeset.NewWith(inverseIntComparator),
-	}
-	countryMap = make(HashMap, 0)
-	cityMap    = make(HashMap, 0)
-	fnameMap   = make(HashMap, 0)
-	snameMap   = make(HashMap, 0)
+	sexMap     = make(map[string]*treeset.Set, 0)
+	statusMap  = make(map[string]*treeset.Set, 0)
+	countryMap = make(map[string]*treeset.Set, 0)
+	cityMap    = make(map[string]*treeset.Set, 0)
+	fnameMap   = make(map[string]*treeset.Set, 0)
+	snameMap   = make(map[string]*treeset.Set, 0)
 )
 
 /**
@@ -73,23 +66,42 @@ func UpdateAccount(data gjson.Result) {
 	sname := record["sname"].String()
 
 	if sex != "" {
+		if _, ok := sexMap[sex]; !ok {
+			sexMap[sex] = treeset.NewWith(inverseIntComparator)
+		}
 		sexMap[sex].Add(recordId)
 	}
 	if country != "" {
-		countryMap[country] = append(countryMap[country], recordId)
+		if _, ok := countryMap[country]; !ok {
+			countryMap[country] = treeset.NewWith(inverseIntComparator)
+		}
+		countryMap[country].Add(recordId)
 	}
 	if city != "" {
-		cityMap[city] = append(cityMap[city], recordId)
+		if _, ok := cityMap[city]; !ok {
+			cityMap[city] = treeset.NewWith(inverseIntComparator)
+		}
+		cityMap[city].Add(recordId)
 	}
 	if status != "" {
+		if _, ok := statusMap[status]; !ok {
+			statusMap[status] = treeset.NewWith(inverseIntComparator)
+		}
 		statusMap[status].Add(recordId)
 	}
 	if fname != "" {
-		fnameMap[fname] = append(fnameMap[fname], recordId)
+		if _, ok := fnameMap[fname]; !ok {
+			fnameMap[fname] = treeset.NewWith(inverseIntComparator)
+		}
+		fnameMap[fname].Add(recordId)
 	}
 	if sname != "" {
-		snameMap[sname] = append(snameMap[sname], recordId)
+		if _, ok := snameMap[sname]; !ok {
+			snameMap[sname] = treeset.NewWith(inverseIntComparator)
+		}
+		snameMap[sname].Add(recordId)
 	}
 
+	//todo: try set
 	accountMap[recordId] = &data
 }
