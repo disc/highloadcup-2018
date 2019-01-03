@@ -10,7 +10,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:39d3da56397ce04c40f9c7580118dcd21b622736250d7e17e4e7f1a86e0abbfc"
+  digest = "1:401a6209775674fbb4df0ec8348f7ebfb83888d2067128052f9fab084e60a7d7"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
@@ -19,8 +19,6 @@
     "sets",
     "sets/treeset",
     "trees",
-    "trees/binaryheap",
-    "trees/btree",
     "trees/redblacktree",
     "utils",
   ]
@@ -159,9 +157,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Sirupsen/logrus",
+    "github.com/emirpasic/gods/lists/arraylist",
     "github.com/emirpasic/gods/sets/treeset",
-    "github.com/emirpasic/gods/trees/binaryheap",
-    "github.com/emirpasic/gods/trees/btree",
     "github.com/emirpasic/gods/utils",
     "github.com/tidwall/buntdb",
     "github.com/tidwall/gjson",

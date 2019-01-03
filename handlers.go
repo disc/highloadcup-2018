@@ -10,8 +10,6 @@ import (
 
 	"github.com/emirpasic/gods/sets/treeset"
 
-	"github.com/emirpasic/gods/lists/arraylist"
-
 	"github.com/valyala/fasthttp"
 )
 
@@ -124,8 +122,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	var resultIds []int
-
-	tmpResult := arraylist.New()
 
 	tempResults := make([]*treeset.Set, 0)
 
@@ -355,51 +351,46 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		//return len(resultIds) < limit
 	}
 
-	//it := tmpResult.Iterator()
-	//for it.End(); it.Prev(); {
-	//	if len(resultIds) >= limit {
-	//		break
-	//	}
-	//	resultIds = append(resultIds, it.Value().(int))
-	//}
-
-	emptyResponse := true
-	if len(tempResults) > 0 {
-		it := tempResults[0].Iterator()
-		if it.Next() {
-			tempResults[1].
+	// find smalest set
+	var smalest *treeset.Set
+	for _, set := range tempResults {
+		if smalest == nil {
+			smalest = set
+			continue
+		}
+		if set.Size() < smalest.Size() {
+			smalest = set
 		}
 	}
 
-	emptyResponse := true
-	for key := range tempResults {
-		set := tempResults[key]
-		if set.Size() == 0 {
-			break
-		}
-		it := tempResults[key].Iterator()
-		if it.Next() {
-			//it.Value()
+	if smalest != nil {
+		it := smalest.Iterator()
+		for it.Next() {
 			if len(resultIds) >= limit {
 				break
 			}
-			emptyResponse = false
-			resultIds = append(resultIds, it.Value().(int))
+			value := it.Value()
+			ok := true
+			for _, tempSet := range tempResults {
+				if *tempSet == *smalest {
+					continue
+				}
+				if !tempSet.Contains(value) {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				resultIds = append(resultIds, value.(int))
+			}
 		}
 	}
 
-	// todo: apply unique for slice
-
 	// order by ID desc
 	// apply limit
-	//sort.Sort(sort.Reverse(sort.IntSlice(resultIds)))
-	//sort.Ints(resultIds)
-	//if len(resultIds) > 0 && limit > 0 && len(resultIds) > limit {
-	//	resultIds = resultIds[0:limit]
-	//}
 
 	jsonData := []byte(`{"accounts":[]}`)
-	if !emptyResponse {
+	if len(resultIds) > 0 {
 		jsonData, _ = json.Marshal(prepareReponse(resultIds, responseProperties))
 	}
 
