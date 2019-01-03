@@ -1,63 +1,82 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/tidwall/gjson"
 )
 
 type Account map[string]interface{}
 
-func GetIdFromKey(key string) int64 {
-	chunks := strings.SplitN(key, ":", 3)
-	if len(chunks) > 1 {
-		if id, err := strconv.Atoi(chunks[1]); err == nil {
-			return int64(id)
-		}
-	}
-	return 0
-}
+type AccountResult *gjson.Result
 
-func BuildAccountKey(id int64) string {
-	return fmt.Sprintf("acc:%d", id)
-}
-
-func GetAccount(id int) json.RawMessage {
-	//var result string
-	//
-	//err := db.View(func(tx *buntdb.Tx) error {
-	//	result, _ = tx.Get(BuildAccountKey(id))
-	//
-	//	return nil
-	//})
-	//
-	//if err != nil {
-	//	log.Fatalln(err)
-	//}
-	//
-	//return json.RawMessage(result)
-
+func GetAccount(id int) AccountResult {
 	return accountMap[id]
 }
 
-type SexMap map[string][]int
+type HashMap map[string][]int
 
-type AccountMap map[int]json.RawMessage
+type AccountMap map[int]AccountResult
 
-var sexMap = make(SexMap, 0)
-var accountMap = make(AccountMap, 0)
+var (
+	accountMap = make(AccountMap, 0)
+	sexMap     = make(HashMap, 0)
+	countryMap = make(HashMap, 0)
+	cityMap    = make(HashMap, 0)
+	fnameMap   = make(HashMap, 0)
+	snameMap   = make(HashMap, 0)
+	statusMap  = make(HashMap, 0)
+)
 
-func UpdateAccount(data *gjson.Result) {
+/**
+03 sex_eq
+489 country_eq sex_eq
+476 country_null sex_eq
+416
+289 interests_contains sex_eq
+279 interests_any sex_eq
+271 sex_eq status_neq
+254 sex_eq status_eq
+233 country_eq
+201 city_eq sex_eq
+197 city_any sex_eq
+195 city_null sex_eq
+192 country_null
+192 likes_contains
+189 interests_any sex_eq status_eq
+186 interests_contains sex_eq status_neq
+186 country_eq email_gt sex_eq
+185 interests_any sex_eq status_neq
+179 interests_contains sex_eq status_eq
+179 country_null email_lt sex_eq
+*/
+
+func UpdateAccount(data gjson.Result) {
 	record := data.Map()
 	recordId := int(record["id"].Int())
 	sex := record["sex"].String()
+	country := record["country"].String()
+	city := record["city"].String()
+	status := record["status"].String()
+	fname := record["fname"].String()
+	sname := record["sname"].String()
 
 	if sex != "" {
 		sexMap[sex] = append(sexMap[sex], recordId)
 	}
+	if country != "" {
+		countryMap[country] = append(countryMap[country], recordId)
+	}
+	if city != "" {
+		cityMap[city] = append(cityMap[city], recordId)
+	}
+	if status != "" {
+		statusMap[status] = append(statusMap[status], recordId)
+	}
+	if fname != "" {
+		fnameMap[fname] = append(fnameMap[fname], recordId)
+	}
+	if sname != "" {
+		snameMap[sname] = append(snameMap[sname], recordId)
+	}
 
-	accountMap[recordId] = json.RawMessage(data.Raw)
+	accountMap[recordId] = &data
 }

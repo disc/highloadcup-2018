@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tidwall/gjson"
-
 	"github.com/valyala/fasthttp"
 )
 
@@ -152,11 +150,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(statusEqF) > 0 {
 		hasFilters = 1
-		//value := `{"status":"` + string(statusEqF) + `"}`
-		//resultIds = processResults(
-		//	eqFilter("status", value),
-		//	resultIds,
-		//)
+		resultIds = processResults(
+			statusMap[string(statusEqF)],
+			resultIds,
+		)
 	}
 	if len(statusNeqF) > 0 {
 		hasFilters = 1
@@ -168,11 +165,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(fnameEqF) > 0 {
 		hasFilters = 1
-		//value := `{"fname":"` + string(fnameEqF) + `"}`
-		//resultIds = processResults(
-		//	eqFilter("fname", value),
-		//	resultIds,
-		//)
+		resultIds = processResults(
+			fnameMap[string(fnameEqF)],
+			resultIds,
+		)
 	}
 	if len(fnameAnyF) > 0 {
 		hasFilters = 1
@@ -194,11 +190,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(snameEqF) > 0 {
 		hasFilters = 1
-		//value := `{"sname":"` + string(snameEqF) + `"}`
-		//resultIds = processResults(
-		//	eqFilter("sname", value),
-		//	resultIds,
-		//)
+		resultIds = processResults(
+			snameMap[string(snameEqF)],
+			resultIds,
+		)
 	}
 	if len(snameStartsF) > 0 {
 		hasFilters = 1
@@ -241,11 +236,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(countryEqF) > 0 {
 		hasFilters = 1
-		//value := `{"country":"` + string(countryEqF) + `"}`
-		//resultIds = processResults(
-		//	eqFilter("country", value),
-		//	resultIds,
-		//)
+		resultIds = processResults(
+			countryMap[string(countryEqF)],
+			resultIds,
+		)
 	}
 	if len(countryNullF) > 0 {
 		hasFilters = 1
@@ -261,11 +255,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	if len(cityEqF) > 0 {
 		hasFilters = 1
-		//value := `{"city":"` + string(cityEqF) + `"}`
-		//resultIds = processResults(
-		//	eqFilter("city", value),
-		//	resultIds,
-		//)
+		resultIds = processResults(
+			cityMap[string(cityEqF)],
+			resultIds,
+		)
 	}
 	if len(cityAnyF) > 0 {
 		hasFilters = 1
@@ -365,8 +358,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	for _, id := range resultIds {
 		result := make(Account, 0)
 
-		parsed := gjson.ParseBytes(GetAccount(id))
-		resultMap := parsed.Map()
+		acc := *GetAccount(id)
+		resultMap := acc.Map()
 
 		for _, key := range responseProperties {
 			result[key] = resultMap[key].Value()
@@ -380,7 +373,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	jsonData, _ := json.Marshal(response)
 
 	// TODO: Use sjson for updates
-	ctx.Success("application/json; charset=utf-8", jsonData)
+	ctx.Success("application/json", jsonData)
 	return
 }
 

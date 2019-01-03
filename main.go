@@ -151,7 +151,7 @@ func parseDataDir(dirPath string) {
 func parseAccountsMap(fileBytes []byte) {
 	result := gjson.GetBytes(fileBytes, "accounts")
 	for _, account := range result.Array() {
-		UpdateAccount(&account)
+		UpdateAccount(account)
 	}
 
 	//for _, account := range data.Accounts {
