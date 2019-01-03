@@ -3,8 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/emirpasic/gods/sets/treeset"
 
 	"github.com/valyala/fasthttp"
 )
@@ -119,11 +123,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	var resultIds []int
 
+	var tmpResult *treeset.Set
+
 	hasFilters := 0
 	if len(sexEqF) > 0 {
 		hasFilters = 1
-
-		resultIds = sexMap[string(sexEqF)]
+		if selectedMap, ok := sexMap[string(sexEqF)]; ok {
+			//log.Println("Initial", selectedMap.Values())
+			tmpResult = selectedMap
+		}
 	}
 	if len(emailDomainF) > 0 {
 		hasFilters = 1
@@ -345,15 +353,32 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		//return len(resultIds) < limit
 	}
 
+	it := tmpResult.Iterator()
+	for it.End(); it.Prev(); {
+		if len(resultIds) >= limit {
+			break
+		}
+		resultIds = append(resultIds, it.Value().(int))
+	}
+
 	// todo: apply unique for slice
 
 	// order by ID desc
 	// apply limit
 	//sort.Sort(sort.Reverse(sort.IntSlice(resultIds)))
-	if len(resultIds) > 0 && limit > 0 && len(resultIds) > limit {
-		resultIds = resultIds[0:limit]
-	}
+	//sort.Ints(resultIds)
+	//if len(resultIds) > 0 && limit > 0 && len(resultIds) > limit {
+	//	resultIds = resultIds[0:limit]
+	//}
 
+	jsonData, _ := json.Marshal(prepareReponse(resultIds, responseProperties))
+
+	// TODO: Use sjson for updates
+	ctx.Success("application/json", jsonData)
+	return
+}
+
+func prepareReponse(resultIds []int, responseProperties []string) *FilterResponse {
 	var results = make([]Account, 0)
 	for _, id := range resultIds {
 		result := make(Account, 0)
@@ -367,14 +392,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		results = append(results, result)
 	}
 
-	response := &FilterResponse{
+	return &FilterResponse{
 		Accounts: results,
 	}
-	jsonData, _ := json.Marshal(response)
-
-	// TODO: Use sjson for updates
-	ctx.Success("application/json", jsonData)
-	return
 }
 
 func eqFilter(sourceMap map[interface{}][]int, value interface{}) []int {
@@ -517,4 +537,62 @@ func intSliceIntersection(a, b []int) (c []int) {
 		}
 	}
 	return
+}
+
+type QInterface interface {
+	sort.Interface
+	// Partition returns slice[:i] and slice[i+1:]
+	// These should references the original memory
+	// since this does an in-place sort
+	Partition(i int) (left QInterface, right QInterface)
+}
+
+func Qsort(a QInterface, prng *rand.Rand) QInterface {
+	if a.Len() < 2 {
+		return a
+	}
+
+	left, right := 0, a.Len()-1
+
+	// Pick a pivot
+	pivotIndex := prng.Int() % a.Len()
+	// Move the pivot to the right
+	a.Swap(pivotIndex, right)
+
+	// Pile elements smaller than the pivot on the left
+	for i := 0; i < a.Len(); i++ {
+		if a.Less(i, right) {
+
+			a.Swap(i, left)
+			left++
+		}
+	}
+
+	// Place the pivot after the last smaller element
+	a.Swap(left, right)
+
+	// Go down the rabbit hole
+	leftSide, rightSide := a.Partition(left)
+	Qsort(leftSide, prng)
+	Qsort(rightSide, prng)
+
+	return a
+}
+
+type QIntSlice []int
+
+func (is QIntSlice) Less(i, j int) bool {
+	return is[i] < is[j]
+}
+
+func (is QIntSlice) Swap(i, j int) {
+	is[i], is[j] = is[j], is[i]
+}
+
+func (is QIntSlice) Len() int {
+	return len(is)
+}
+
+func (is QIntSlice) Partition(i int) (left QInterface, right QInterface) {
+	return QIntSlice(is[:i]), QIntSlice(is[i+1:])
 }

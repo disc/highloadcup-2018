@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/tidwall/gjson"
 )
 
@@ -13,12 +14,16 @@ func GetAccount(id int) AccountResult {
 }
 
 type HashMap map[string][]int
+type TreeSet map[string]*treeset.Set
 
 type AccountMap map[int]AccountResult
 
 var (
 	accountMap = make(AccountMap, 0)
-	sexMap     = make(HashMap, 0)
+	sexMap     = TreeSet{
+		"m": treeset.NewWithIntComparator(),
+		"f": treeset.NewWithIntComparator(),
+	}
 	countryMap = make(HashMap, 0)
 	cityMap    = make(HashMap, 0)
 	fnameMap   = make(HashMap, 0)
@@ -60,7 +65,7 @@ func UpdateAccount(data gjson.Result) {
 	sname := record["sname"].String()
 
 	if sex != "" {
-		sexMap[sex] = append(sexMap[sex], recordId)
+		sexMap[sex].Add(recordId)
 	}
 	if country != "" {
 		countryMap[country] = append(countryMap[country], recordId)
