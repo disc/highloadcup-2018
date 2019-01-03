@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/emirpasic/gods/sets/treeset"
+	"github.com/emirpasic/gods/utils"
 	"github.com/tidwall/gjson"
 )
 
@@ -19,16 +20,23 @@ type TreeSet map[string]*treeset.Set
 type AccountMap map[int]AccountResult
 
 var (
+	inverseIntComparator = func(a, b interface{}) int {
+		return -utils.IntComparator(a, b)
+	}
 	accountMap = make(AccountMap, 0)
 	sexMap     = TreeSet{
-		"m": treeset.NewWithIntComparator(),
-		"f": treeset.NewWithIntComparator(),
+		"m": treeset.NewWith(inverseIntComparator),
+		"f": treeset.NewWith(inverseIntComparator),
+	}
+	statusMap = TreeSet{
+		"свободны":   treeset.NewWith(inverseIntComparator),
+		"заняты":     treeset.NewWith(inverseIntComparator),
+		"всё сложно": treeset.NewWith(inverseIntComparator),
 	}
 	countryMap = make(HashMap, 0)
 	cityMap    = make(HashMap, 0)
 	fnameMap   = make(HashMap, 0)
 	snameMap   = make(HashMap, 0)
-	statusMap  = make(HashMap, 0)
 )
 
 /**
@@ -74,7 +82,7 @@ func UpdateAccount(data gjson.Result) {
 		cityMap[city] = append(cityMap[city], recordId)
 	}
 	if status != "" {
-		statusMap[status] = append(statusMap[status], recordId)
+		statusMap[status].Add(recordId)
 	}
 	if fname != "" {
 		fnameMap[fname] = append(fnameMap[fname], recordId)

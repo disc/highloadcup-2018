@@ -10,6 +10,8 @@ import (
 
 	"github.com/emirpasic/gods/sets/treeset"
 
+	"github.com/emirpasic/gods/lists/arraylist"
+
 	"github.com/valyala/fasthttp"
 )
 
@@ -123,14 +125,21 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	var resultIds []int
 
-	var tmpResult *treeset.Set
+	tmpResult := arraylist.New()
+
+	tempResults := make([]*treeset.Set, 0)
 
 	hasFilters := 0
 	if len(sexEqF) > 0 {
 		hasFilters = 1
-		if selectedMap, ok := sexMap[string(sexEqF)]; ok {
-			//log.Println("Initial", selectedMap.Values())
-			tmpResult = selectedMap
+		if resultSet, ok := sexMap[string(sexEqF)]; ok {
+			tempResults = append(tempResults, resultSet)
+		}
+	}
+	if len(statusEqF) > 0 {
+		hasFilters = 1
+		if resultSet, ok := statusMap[string(statusEqF)]; ok {
+			tempResults = append(tempResults, resultSet)
 		}
 	}
 	if len(emailDomainF) > 0 {
@@ -153,13 +162,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		value := `{"email":"` + string(emailGtF) + `"}`
 		resultIds = processResults(
 			gtFilter("email", value),
-			resultIds,
-		)
-	}
-	if len(statusEqF) > 0 {
-		hasFilters = 1
-		resultIds = processResults(
-			statusMap[string(statusEqF)],
 			resultIds,
 		)
 	}
@@ -353,12 +355,37 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		//return len(resultIds) < limit
 	}
 
-	it := tmpResult.Iterator()
-	for it.End(); it.Prev(); {
-		if len(resultIds) >= limit {
+	//it := tmpResult.Iterator()
+	//for it.End(); it.Prev(); {
+	//	if len(resultIds) >= limit {
+	//		break
+	//	}
+	//	resultIds = append(resultIds, it.Value().(int))
+	//}
+
+	emptyResponse := true
+	if len(tempResults) > 0 {
+		it := tempResults[0].Iterator()
+		if it.Next() {
+			tempResults[1].
+		}
+	}
+
+	emptyResponse := true
+	for key := range tempResults {
+		set := tempResults[key]
+		if set.Size() == 0 {
 			break
 		}
-		resultIds = append(resultIds, it.Value().(int))
+		it := tempResults[key].Iterator()
+		if it.Next() {
+			//it.Value()
+			if len(resultIds) >= limit {
+				break
+			}
+			emptyResponse = false
+			resultIds = append(resultIds, it.Value().(int))
+		}
 	}
 
 	// todo: apply unique for slice
@@ -371,7 +398,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	resultIds = resultIds[0:limit]
 	//}
 
-	jsonData, _ := json.Marshal(prepareReponse(resultIds, responseProperties))
+	jsonData := []byte(`{"accounts":[]}`)
+	if !emptyResponse {
+		jsonData, _ = json.Marshal(prepareReponse(resultIds, responseProperties))
+	}
 
 	// TODO: Use sjson for updates
 	ctx.Success("application/json", jsonData)
