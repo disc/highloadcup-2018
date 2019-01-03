@@ -68,11 +68,6 @@ func initDB() {
 func main() {
 	log.Println("Started")
 
-	db, _ = buntdb.Open(":memory:")
-	defer db.Close()
-
-	initDB()
-
 	parseDataDir("./data/")
 	log.Println("Data has been parsed completely")
 

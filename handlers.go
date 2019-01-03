@@ -3,13 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/tidwall/gjson"
 
-	"github.com/tidwall/buntdb"
 	"github.com/valyala/fasthttp"
 )
 
@@ -124,268 +122,252 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	var resultIds []int
 
 	hasFilters := 0
-	_ = db.View(func(tx *buntdb.Tx) error {
-		if len(sexEqF) > 0 {
-			hasFilters = 1
-			value := `{"sex":"` + string(sexEqF) + `"}`
-			resultIds = processResults(
-				eqFilter("sex", value, tx),
-				resultIds,
-			)
-		}
-		if len(emailDomainF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				eqFilter("email_domain", string(emailDomainF), tx),
-				resultIds,
-			)
-		}
-		if len(emailLtF) > 0 {
-			hasFilters = 1
-			value := `{"email":"` + string(emailLtF) + `"}`
-			resultIds = processResults(
-				ltFilter("email", value, tx),
-				resultIds,
-			)
-		}
-		if len(emailGtF) > 0 {
-			hasFilters = 1
-			value := `{"email":"` + string(emailGtF) + `"}`
-			resultIds = processResults(
-				gtFilter("email", value, tx),
-				resultIds,
-			)
-		}
-		if len(statusEqF) > 0 {
-			hasFilters = 1
-			value := `{"status":"` + string(statusEqF) + `"}`
-			resultIds = processResults(
-				eqFilter("status", value, tx),
-				resultIds,
-			)
-		}
-		if len(statusNeqF) > 0 {
-			hasFilters = 1
-			value := string(statusEqF)
-			resultIds = processResults(
-				neqFilter("status", value, tx),
-				resultIds,
-			)
-		}
-		if len(fnameEqF) > 0 {
-			hasFilters = 1
-			value := `{"fname":"` + string(fnameEqF) + `"}`
-			resultIds = processResults(
-				eqFilter("fname", value, tx),
-				resultIds,
-			)
-		}
-		if len(fnameAnyF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				anyFilter("fname", string(fnameAnyF), tx),
-				resultIds,
-			)
-		}
-		if len(fnameNullF) > 0 {
-			hasFilters = 1
-			value := string(fnameNullF)
-			if value == "0" {
-				responseProperties = append(responseProperties, "fname")
-			}
-			resultIds = processResults(
-				nullFilter("fname", value, tx),
-				resultIds,
-			)
-		}
-		if len(snameEqF) > 0 {
-			hasFilters = 1
-			value := `{"sname":"` + string(snameEqF) + `"}`
-			resultIds = processResults(
-				eqFilter("sname", value, tx),
-				resultIds,
-			)
-		}
-		if len(snameStartsF) > 0 {
-			hasFilters = 1
-			sSnameStartsF := string(snameStartsF)
-			var foundResults []int
-			_ = tx.Ascend("sname", func(key, val string) bool {
-				if strings.HasPrefix(val, sSnameStartsF) {
-					foundResults = append(resultIds, GetIdFromKey(key))
-				}
+	if len(sexEqF) > 0 {
+		hasFilters = 1
 
-				return true
-			})
+		resultIds = sexMap[string(sexEqF)]
+	}
+	if len(emailDomainF) > 0 {
+		hasFilters = 1
+		//resultIds = processResults(
+		//	eqFilter("email_domain", string(emailDomainF)),
+		//	resultIds,
+		//)
+	}
+	if len(emailLtF) > 0 {
+		hasFilters = 1
+		value := `{"email":"` + string(emailLtF) + `"}`
+		resultIds = processResults(
+			ltFilter("email", value),
+			resultIds,
+		)
+	}
+	if len(emailGtF) > 0 {
+		hasFilters = 1
+		value := `{"email":"` + string(emailGtF) + `"}`
+		resultIds = processResults(
+			gtFilter("email", value),
+			resultIds,
+		)
+	}
+	if len(statusEqF) > 0 {
+		hasFilters = 1
+		//value := `{"status":"` + string(statusEqF) + `"}`
+		//resultIds = processResults(
+		//	eqFilter("status", value),
+		//	resultIds,
+		//)
+	}
+	if len(statusNeqF) > 0 {
+		hasFilters = 1
+		value := string(statusEqF)
+		resultIds = processResults(
+			neqFilter("status", value),
+			resultIds,
+		)
+	}
+	if len(fnameEqF) > 0 {
+		hasFilters = 1
+		//value := `{"fname":"` + string(fnameEqF) + `"}`
+		//resultIds = processResults(
+		//	eqFilter("fname", value),
+		//	resultIds,
+		//)
+	}
+	if len(fnameAnyF) > 0 {
+		hasFilters = 1
+		resultIds = processResults(
+			anyFilter("fname", string(fnameAnyF)),
+			resultIds,
+		)
+	}
+	if len(fnameNullF) > 0 {
+		hasFilters = 1
+		value := string(fnameNullF)
+		if value == "0" {
+			responseProperties = append(responseProperties, "fname")
+		}
+		resultIds = processResults(
+			nullFilter("fname", value),
+			resultIds,
+		)
+	}
+	if len(snameEqF) > 0 {
+		hasFilters = 1
+		//value := `{"sname":"` + string(snameEqF) + `"}`
+		//resultIds = processResults(
+		//	eqFilter("sname", value),
+		//	resultIds,
+		//)
+	}
+	if len(snameStartsF) > 0 {
+		hasFilters = 1
+		//sSnameStartsF := string(snameStartsF)
+		var foundResults = make([]int, 0)
 
-			resultIds = processResults(
-				foundResults,
-				resultIds,
-			)
+		resultIds = processResults(
+			foundResults,
+			resultIds,
+		)
+	}
+	if len(snameNullF) > 0 {
+		hasFilters = 1
+		value := string(snameNullF)
+		if value == "0" {
+			responseProperties = append(responseProperties, "sname")
 		}
-		if len(snameNullF) > 0 {
-			hasFilters = 1
-			value := string(snameNullF)
-			if value == "0" {
-				responseProperties = append(responseProperties, "sname")
-			}
-			resultIds = processResults(
-				nullFilter("sname", value, tx),
-				resultIds,
-			)
+		resultIds = processResults(
+			nullFilter("sname", value),
+			resultIds,
+		)
+	}
+	if len(phoneCodeF) > 0 {
+		hasFilters = 1
+		//resultIds = processResults(
+		//	eqFilter("phone_code", string(phoneCodeF)),
+		//	resultIds,
+		//)
+	}
+	if len(phoneNullF) > 0 {
+		hasFilters = 1
+		value := string(phoneNullF)
+		if value == "0" {
+			responseProperties = append(responseProperties, "phone")
 		}
-		if len(phoneCodeF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				eqFilter("phone_code", string(phoneCodeF), tx),
-				resultIds,
-			)
-		}
-		if len(phoneNullF) > 0 {
-			hasFilters = 1
-			value := string(phoneNullF)
-			if value == "0" {
-				responseProperties = append(responseProperties, "phone")
-			}
-			resultIds = processResults(
-				nullFilter("phone", value, tx),
-				resultIds,
-			)
-		}
-		if len(countryEqF) > 0 {
-			hasFilters = 1
-			value := `{"country":"` + string(countryEqF) + `"}`
-			resultIds = processResults(
-				eqFilter("country", value, tx),
-				resultIds,
-			)
-		}
-		if len(countryNullF) > 0 {
-			hasFilters = 1
-			value := string(countryNullF)
+		resultIds = processResults(
+			nullFilter("phone", value),
+			resultIds,
+		)
+	}
+	if len(countryEqF) > 0 {
+		hasFilters = 1
+		//value := `{"country":"` + string(countryEqF) + `"}`
+		//resultIds = processResults(
+		//	eqFilter("country", value),
+		//	resultIds,
+		//)
+	}
+	if len(countryNullF) > 0 {
+		hasFilters = 1
+		value := string(countryNullF)
 
-			if value == "0" {
-				responseProperties = append(responseProperties, "country")
-			}
-			resultIds = processResults(
-				nullFilter("country", value, tx),
-				resultIds,
-			)
+		if value == "0" {
+			responseProperties = append(responseProperties, "country")
 		}
-		if len(cityEqF) > 0 {
-			hasFilters = 1
-			value := `{"city":"` + string(cityEqF) + `"}`
-			resultIds = processResults(
-				eqFilter("city", value, tx),
-				resultIds,
-			)
+		resultIds = processResults(
+			nullFilter("country", value),
+			resultIds,
+		)
+	}
+	if len(cityEqF) > 0 {
+		hasFilters = 1
+		//value := `{"city":"` + string(cityEqF) + `"}`
+		//resultIds = processResults(
+		//	eqFilter("city", value),
+		//	resultIds,
+		//)
+	}
+	if len(cityAnyF) > 0 {
+		hasFilters = 1
+		resultIds = processResults(
+			anyFilter("city", string(cityAnyF)),
+			resultIds,
+		)
+	}
+	if len(cityNullF) > 0 {
+		hasFilters = 1
+		value := string(cityNullF)
+		if value == "0" {
+			responseProperties = append(responseProperties, "city")
 		}
-		if len(cityAnyF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				anyFilter("city", string(cityAnyF), tx),
-				resultIds,
-			)
+		resultIds = processResults(
+			nullFilter("city", value),
+			resultIds,
+		)
+	}
+	if len(birthLtF) > 0 {
+		hasFilters = 1
+		value := `{"birth":"` + string(birthLtF) + `"}`
+		resultIds = processResults(
+			ltFilter("birth", value),
+			resultIds,
+		)
+	}
+	if len(birthGtF) > 0 {
+		hasFilters = 1
+		value := `{"birth":"` + string(birthGtF) + `"}`
+		resultIds = processResults(
+			gtFilter("birth", value),
+			resultIds,
+		)
+	}
+	if len(birthYearF) > 0 {
+		hasFilters = 1
+		//resultIds = processResults(
+		//	eqFilter("birth_year", string(birthYearF)),
+		//	resultIds,
+		//)
+	}
+	if len(interestsContainsF) > 0 {
+		hasFilters = 1
+		resultIds = processResults(
+			containsFilter("interests", string(interestsContainsF)),
+			resultIds,
+		)
+	}
+	if len(interestsAnyF) > 0 {
+		hasFilters = 1
+		resultIds = processResults(
+			anyFilter("interests", string(interestsAnyF)),
+			resultIds,
+		)
+	}
+	if len(likesContainsF) > 0 {
+		hasFilters = 1
+		resultIds = processResults(
+			containsFilter("likes", string(likesContainsF)),
+			resultIds,
+		)
+	}
+	if string(premiumNowF) == "1" {
+		hasFilters = 1
+		resultIds = processResults(
+			ltFilter("premium_to", fmt.Sprintf("%v", now)),
+			resultIds,
+		)
+	}
+	if len(premiumNullF) > 0 {
+		hasFilters = 1
+		value := string(premiumNullF)
+		if value == "0" {
+			responseProperties = append(responseProperties, "premium")
 		}
-		if len(cityNullF) > 0 {
-			hasFilters = 1
-			value := string(cityNullF)
-			if value == "0" {
-				responseProperties = append(responseProperties, "city")
-			}
-			resultIds = processResults(
-				nullFilter("city", value, tx),
-				resultIds,
-			)
-		}
-		if len(birthLtF) > 0 {
-			hasFilters = 1
-			value := `{"birth":"` + string(birthLtF) + `"}`
-			resultIds = processResults(
-				ltFilter("birth", value, tx),
-				resultIds,
-			)
-		}
-		if len(birthGtF) > 0 {
-			hasFilters = 1
-			value := `{"birth":"` + string(birthGtF) + `"}`
-			resultIds = processResults(
-				gtFilter("birth", value, tx),
-				resultIds,
-			)
-		}
-		if len(birthYearF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				eqFilter("birth_year", string(birthYearF), tx),
-				resultIds,
-			)
-		}
-		if len(interestsContainsF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				containsFilter("interests", string(interestsContainsF), tx),
-				resultIds,
-			)
-		}
-		if len(interestsAnyF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				anyFilter("interests", string(interestsAnyF), tx),
-				resultIds,
-			)
-		}
-		if len(likesContainsF) > 0 {
-			hasFilters = 1
-			resultIds = processResults(
-				containsFilter("likes", string(likesContainsF), tx),
-				resultIds,
-			)
-		}
-		if string(premiumNowF) == "1" {
-			hasFilters = 1
-			resultIds = processResults(
-				ltFilter("premium_to", fmt.Sprintf("%v", now), tx),
-				resultIds,
-			)
-		}
-		if len(premiumNullF) > 0 {
-			hasFilters = 1
-			value := string(premiumNullF)
-			if value == "0" {
-				responseProperties = append(responseProperties, "premium")
-			}
-			resultIds = processResults(
-				nullFilter("premium", value, tx),
-				resultIds,
-			)
-		}
-		if hasFilters == 0 {
-			_ = tx.Descend("id", func(key, val string) bool {
-				// todo: use val?
-				resultIds = append(resultIds, GetIdFromKey(key))
-				return len(resultIds) < limit
-			})
-		}
-
-		return nil
-	})
+		resultIds = processResults(
+			nullFilter("premium", value),
+			resultIds,
+		)
+	}
+	if hasFilters == 0 {
+		//resultIds = append(resultIds, GetIdFromKey(key))
+		//return len(resultIds) < limit
+	}
 
 	// todo: apply unique for slice
 
 	// order by ID desc
 	// apply limit
-	sort.Sort(sort.Reverse(sort.IntSlice(resultIds)))
+	//sort.Sort(sort.Reverse(sort.IntSlice(resultIds)))
 	if len(resultIds) > 0 && limit > 0 && len(resultIds) > limit {
 		resultIds = resultIds[0:limit]
 	}
 
 	var results = make([]Account, 0)
 	for _, id := range resultIds {
-		parsed := gjson.ParseBytes(GetAccount(int64(id)))
+		result := make(Account, 0)
+
+		parsed := gjson.ParseBytes(GetAccount(id))
 		resultMap := parsed.Map()
 
-		result := make(Account, 0)
 		for _, key := range responseProperties {
 			result[key] = resultMap[key].Value()
 		}
@@ -397,91 +379,90 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	jsonData, _ := json.Marshal(response)
 
+	// TODO: Use sjson for updates
 	ctx.Success("application/json; charset=utf-8", jsonData)
 	return
 }
 
-func eqFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func eqFilter(sourceMap map[interface{}][]int, value interface{}) []int {
 	resultIds := make([]int, 0)
-	_ = tx.AscendEqual(fKey, fVal, func(key, val string) bool {
-		resultIds = append(resultIds, GetIdFromKey(key))
-		return true
-	})
+
+	resultIds = sourceMap[value]
 
 	return resultIds
 }
 
-func neqFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func neqFilter(fKey string, fVal string) []int {
 	resultIds := make([]int, 0)
-	_ = tx.Ascend(fKey, func(key, val string) bool {
-		value := gjson.Parse(val).Get(fKey)
-
-		if value.String() != fVal {
-			resultIds = append(resultIds, GetIdFromKey(key))
-		}
-
-		return true
-	})
+	//_ = tx.Ascend(fKey, func(key, val string) bool {
+	//	value := gjson.Parse(val).Get(fKey)
+	//
+	//	if value.String() != fVal {
+	//		resultIds = append(resultIds, GetIdFromKey(key))
+	//	}
+	//
+	//	return true
+	//})
 
 	return resultIds
 }
 
-func ltFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func ltFilter(fKey string, fVal string) []int {
 	resultIds := make([]int, 0)
-	_ = tx.AscendLessThan(fKey, fVal, func(key, val string) bool {
-		resultIds = append(resultIds, GetIdFromKey(key))
-		return true //TODO: get not more than limit
-	})
+	//_ = tx.AscendLessThan(fKey, fVal, func(key, val string) bool {
+	//	resultIds = append(resultIds, GetIdFromKey(key))
+	//	return true //TODO: get not more than limit
+	//})
 
 	return resultIds
 }
 
-func gtFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func gtFilter(fKey string, fVal string) []int {
 	resultIds := make([]int, 0)
-	_ = tx.AscendGreaterOrEqual(fKey, fVal, func(key, val string) bool {
-		resultIds = append(resultIds, GetIdFromKey(key))
-		return true
-	})
+	//_ = tx.AscendGreaterOrEqual(fKey, fVal, func(key, val string) bool {
+	//	resultIds = append(resultIds, GetIdFromKey(key))
+	//	return true
+	//})
 
 	return resultIds
 }
 
-func nullFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func nullFilter(fKey string, fVal string) []int {
 	// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);
 	resultIds := make([]int, 0)
 
 	if fVal == "0" {
-		_ = tx.Descend(fKey, func(key, val string) bool {
-			value := gjson.Parse(val).Get(fKey)
-
-			isNotEmpty := value.Exists() || value.String() != ""
-
-			if isNotEmpty {
-				resultIds = append(resultIds, GetIdFromKey(key))
-			}
-
-			return isNotEmpty
-		})
+		//_ = tx.Descend(fKey, func(key, val string) bool {
+		//	value := gjson.Parse(val).Get(fKey)
+		//
+		//	isNotEmpty := value.Exists() || value.String() != ""
+		//
+		//	if isNotEmpty {
+		//		resultIds = append(resultIds, GetIdFromKey(key))
+		//	}
+		//
+		//	return isNotEmpty
+		//})
 	}
 
 	if fVal == "1" {
-		_ = tx.Ascend(fKey, func(key, val string) bool {
-			value := gjson.Parse(val).Get(fKey)
-
-			isEmpty := !value.Exists() || value.String() == ""
-
-			if isEmpty {
-				resultIds = append(resultIds, GetIdFromKey(key))
-			}
-
-			return isEmpty
-		})
+		//_ = tx.Ascend(fKey, func(key, val string) bool {
+		//	value := gjson.Parse(val).Get(fKey)
+		//
+		//	isEmpty := !value.Exists() || value.String() == ""
+		//
+		//	if isEmpty {
+		//		resultIds = append(resultIds, GetIdFromKey(key))
+		//	}
+		//
+		//	return isEmpty
+		//})
 	}
 
 	return resultIds
 }
 
-func anyFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func anyFilter(fKey string, fVal string) []int {
 	resultIds := make([]int, 0)
 
 	_ = strings.Split(fVal, ",")
@@ -493,7 +474,7 @@ func anyFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
 	return resultIds
 }
 
-func containsFilter(fKey string, fVal string, tx *buntdb.Tx) []int {
+func containsFilter(fKey string, fVal string) []int {
 	resultIds := make([]int, 0)
 
 	_ = strings.Split(fVal, ",")
