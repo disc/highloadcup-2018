@@ -10,6 +10,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:e648389fd795e80783fb382616d5b2b8bab09e3703cc673231d8ff721f40a6ef"
+  name = "github.com/derekparker/trie"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e608c2733dc704cd4a73f825f4acab8f3c3d4d15"
+
+[[projects]]
   digest = "1:b5f1cd4fa9838cd8d80dc0fd6a5c0041edbfc7412390770b2f56e826e1c955be"
   name = "github.com/emirpasic/gods"
   packages = [
@@ -116,6 +124,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Sirupsen/logrus",
+    "github.com/derekparker/trie",
     "github.com/emirpasic/gods/lists/arraylist",
     "github.com/emirpasic/gods/maps/treemap",
     "github.com/emirpasic/gods/sets/treeset",

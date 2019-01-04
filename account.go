@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/emirpasic/gods/lists/arraylist"
+	"github.com/derekparker/trie"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
 	"github.com/tidwall/gjson"
@@ -13,32 +13,30 @@ var (
 	inverseIntComparator = func(a, b interface{}) int {
 		return -utils.IntComparator(a, b)
 	}
-	accountMap        = treemap.NewWith(inverseIntComparator)
-	interestsIndexMap = map[string]*arraylist.List{}
+	accountMap = treemap.NewWith(inverseIntComparator)
 )
 
 type Account struct {
-	record map[string]gjson.Result
+	record        map[string]gjson.Result
+	interestsTree *trie.Trie
 }
 
 func UpdateAccount(data gjson.Result) {
 	record := data.Map()
 	recordId := int(record["id"].Int())
 
-	account := &Account{
-		record,
-	}
+	interestsTree := trie.New()
 
 	record["interests"].ForEach(func(key, value gjson.Result) bool {
-		val := value.String()
-		if _, ok := interestsIndexMap[val]; !ok {
-			interestsIndexMap[val] = arraylist.New()
-		}
-
-		interestsIndexMap[val].Add(val)
+		interestsTree.Add(value.String(), 1)
 
 		return true
 	})
+
+	account := &Account{
+		record,
+		interestsTree,
+	}
 
 	//todo: try set
 	accountMap.Put(recordId, account)

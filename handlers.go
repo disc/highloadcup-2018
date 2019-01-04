@@ -112,6 +112,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//
 	interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
 	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
+	if len(interestsContainsF) > 0 || len(interestsAnyF) > 0 {
+		//responseProperties = append(responseProperties, "interests")
+	}
 
 	//
 	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
@@ -126,41 +129,52 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	filters := make(map[string]interface{})
 
+	var sexEqFilter string
 	if len(sexEqF) > 0 {
-		filters["sex_eq"] = string(sexEqF)
+		sexEqFilter = string(sexEqF)
+		filters["sex_eq"] = 1
 	}
 	if len(emailLtF) > 0 {
 		filters["email_lt"] = string(emailLtF)
 	}
+	var statusEqFilter string
 	if len(statusEqF) > 0 {
-		filters["status_eq"] = string(statusEqF)
+		statusEqFilter = string(statusEqF)
+		filters["status_eq"] = 1
 	}
+	var statusNeqFilter string
 	if len(statusNeqF) > 0 {
-		filters["status_neq"] = string(statusNeqF)
+		statusNeqFilter = string(statusNeqF)
+		filters["status_neq"] = 1
 	}
+	var fnameNullFilter bool
+	var fnameNotNullFilter bool
 	if len(fnameNullF) > 0 {
 		if string(fnameNullF) == "0" {
+			fnameNotNullFilter = true
 			filters["fname_not_null"] = 1
 		} else {
+			fnameNullFilter = true
 			filters["fname_null"] = 1
 		}
 
 	}
-	var interestsFilter []string
+	var interestsAnyFilter []string
+	//var interestsContainsFilter []string
 	if len(interestsAnyF) > 0 {
 		words := strings.Split(string(interestsAnyF), ",")
 		if len(words) > 0 {
-			filters["interests_any"] = words
-			interestsFilter = words
+			filters["interests_any"] = 1
+			interestsAnyFilter = words
 		}
 	}
-	if len(interestsContainsF) > 0 {
-		words := strings.Split(string(interestsContainsF), ",")
-		if len(words) > 0 {
-			filters["interests_contains"] = words
-			interestsFilter = words
-		}
-	}
+	//if len(interestsContainsF) > 0 {
+	//	words := strings.Split(string(interestsContainsF), ",")
+	//	if len(words) > 0 {
+	//		filters["interests_contains"] = 1
+	//		interestsContainsFilter = words
+	//	}
+	//}
 	filtersCount := len(filters)
 	if filtersCount == 0 {
 		//foundAccounts = append(foundAccounts, GetIdFromKey(key))
@@ -176,20 +190,49 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		passedFilters := 0
 		account := *it.Value().(*Account)
 		value := account.record
-		if sexEqFilter, ok := filters["sex_eq"]; ok && value["sex"].Value() == sexEqFilter {
-			passedFilters += 1
+		if sexEqFilter != "" {
+			if value["sex"].Value() == sexEqFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
 		}
-		if statusEqFilter, ok := filters["status_eq"]; ok && value["status"].Value() == statusEqFilter {
-			passedFilters += 1
+		if statusEqFilter != "" {
+			if value["status"].Value() == statusEqFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
 		}
-		if statusNeqFilter, ok := filters["status_neq"]; ok && value["status"].Value() != statusNeqFilter {
-			passedFilters += 1
+		if statusNeqFilter != "" {
+			if value["status"].Value() != statusNeqFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
 		}
-		if _, ok := filters["fname_null"]; ok && value["fname"].String() == "" {
-			passedFilters += 1
+		if fnameNullFilter {
+			if value["fname"].String() == "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		} else if fnameNotNullFilter {
+			if value["fname"].String() != "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
 		}
-		if _, ok := filters["fname_not_null"]; ok && value["fname"].String() != "" {
-			passedFilters += 1
+		if len(interestsAnyFilter) > 0 {
+			//start := time.Now()
+			for _, v := range interestsAnyFilter {
+				if account.interestsTree.HasKeysWithPrefix(v) {
+					passedFilters += 1
+					break
+				}
+			}
+			//log.Printf("contains took %s", time.Since(start))
 		}
 		if passedFilters == filtersCount {
 			foundAccounts = append(foundAccounts, it.Value().(*Account))
@@ -200,23 +243,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//if emailLtFilter, ok := filters["email_lt"].(string); ok && value["email"].String()[0:len(emailLtFilter)] < emailLtFilter {
 	//	passedFilters += 1
 	//}
-
-	// any
-	//interestsContainsResults := arraylist.New()
-	if &interestsFilter != nil {
-		//	start := time.Now()
-		//OuterLoop:
-		//	for _, v := range interestsFilter {
-		//		for acc := range interestsIndexMap[v].Each() {
-		//			if interestsContainsResults.Contains(acc) {
-		//				continue OuterLoop
-		//			}
-		//			interestsContainsResults.Add(acc)
-		//		}
-		//	}
-		//
-		//	log.Printf("contains took %s", time.Since(start))
-	}
 
 	// order by ID desc
 	// apply limit
