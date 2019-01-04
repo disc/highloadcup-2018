@@ -62,9 +62,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "sex")
 	}
 
-	//emailDomainF := ctx.QueryArgs().Peek("email_domain")
-	//emailLtF := ctx.QueryArgs().Peek("email_lt")
-	//emailGtF := ctx.QueryArgs().Peek("email_gt")
+	emailDomainF := ctx.QueryArgs().Peek("email_domain")
+	emailLtF := ctx.QueryArgs().Peek("email_lt")
+	emailGtF := ctx.QueryArgs().Peek("email_gt")
+	if len(emailLtF) > 0 || len(emailGtF) > 0 || len(emailDomainF) > 0 {
+		responseProperties = append(responseProperties, "email")
+	}
 
 	statusEqF := ctx.QueryArgs().Peek("status_eq")
 	statusNeqF := ctx.QueryArgs().Peek("status_neq")
@@ -72,12 +75,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "status")
 	}
 
-	//fnameEqF := ctx.QueryArgs().Peek("fname_eq")
-	//fnameAnyF := ctx.QueryArgs().Peek("fname_any")
-	//fnameNullF := ctx.QueryArgs().Peek("fname_null")
-	//if len(fnameEqF) > 0 || len(fnameAnyF) > 0 {
-	//	responseProperties = append(responseProperties, "fname")
-	//}
+	fnameEqF := ctx.QueryArgs().Peek("fname_eq")
+	fnameAnyF := ctx.QueryArgs().Peek("fname_any")
+	fnameNullF := ctx.QueryArgs().Peek("fname_null")
+	if len(fnameEqF) > 0 || len(fnameAnyF) > 0 {
+		responseProperties = append(responseProperties, "fname")
+	}
 	//
 	//snameEqF := ctx.QueryArgs().Peek("sname_eq")
 	//snameStartsF := ctx.QueryArgs().Peek("sname_starts")
@@ -132,11 +135,22 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	if len(sexEqF) > 0 {
 		filters["sex_eq"] = string(sexEqF)
 	}
+	if len(emailLtF) > 0 {
+		filters["email_lt"] = string(emailLtF)
+	}
 	if len(statusEqF) > 0 {
 		filters["status_eq"] = string(statusEqF)
 	}
 	if len(statusNeqF) > 0 {
 		filters["status_neq"] = string(statusNeqF)
+	}
+	if len(fnameNullF) > 0 {
+		if string(fnameNullF) == "0" {
+			filters["fname_not_null"] = 1
+		} else {
+			filters["fname_null"] = 1
+		}
+
 	}
 	filtersCount := len(filters)
 	if filtersCount == 0 {
@@ -144,7 +158,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		//return len(resultIds) < limit
 	}
 
-	// full scan
+	// full scan search
 	it := accountMap.Iterator()
 	for it.Next() {
 		if len(resultIds) >= limit {
@@ -152,19 +166,30 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		passedFilters := 0
 		value := *it.Value().(*map[string]gjson.Result)
-		if sexEqFilter, ok := filters["sex_eq"]; ok && sexEqFilter == value["sex"].Value() {
+		if sexEqFilter, ok := filters["sex_eq"]; ok && value["sex"].Value() == sexEqFilter {
 			passedFilters += 1
 		}
-		if statusEqFilter, ok := filters["status_eq"]; ok && statusEqFilter == value["status"].Value() {
+		if statusEqFilter, ok := filters["status_eq"]; ok && value["status"].Value() == statusEqFilter {
 			passedFilters += 1
 		}
-		if statusNeqFilter, ok := filters["status_neq"]; ok && statusNeqFilter != value["status"].Value() {
+		if statusNeqFilter, ok := filters["status_neq"]; ok && value["status"].Value() != statusNeqFilter {
+			passedFilters += 1
+		}
+		if _, ok := filters["fname_null"]; ok && value["fname"].String() == "" {
+			passedFilters += 1
+		}
+		if _, ok := filters["fname_not_null"]; ok && value["fname"].String() != "" {
 			passedFilters += 1
 		}
 		if passedFilters == filtersCount {
 			resultIds = append(resultIds, value)
 		}
 	}
+
+	// index search
+	//if emailLtFilter, ok := filters["email_lt"].(string); ok && value["email"].String()[0:len(emailLtFilter)] < emailLtFilter {
+	//	passedFilters += 1
+	//}
 
 	// order by ID desc
 	// apply limit
