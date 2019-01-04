@@ -2,13 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"math/rand"
-	"sort"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/tidwall/gjson"
 
 	"github.com/emirpasic/gods/sets/treeset"
 
@@ -127,9 +122,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	responseProperties = append(responseProperties, "premium")
 	//}
 
-	var resultIds []map[string]gjson.Result
-
-	//tempResults := make([]*treeset.Set, 0)
+	var foundAccounts []*Account
 
 	filters := make(map[string]interface{})
 
@@ -153,37 +146,31 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 
 	}
-	var interestsFilter []interface{}
+	var interestsFilter []string
 	if len(interestsAnyF) > 0 {
 		words := strings.Split(string(interestsAnyF), ",")
 		if len(words) > 0 {
-			interestsFilter = make([]interface{}, len(words))
 			filters["interests_any"] = words
-			for i, v := range words {
-				interestsFilter[i] = v
-			}
+			interestsFilter = words
 		}
 	}
 	if len(interestsContainsF) > 0 {
 		words := strings.Split(string(interestsContainsF), ",")
 		if len(words) > 0 {
-			interestsFilter = make([]interface{}, len(words))
 			filters["interests_contains"] = words
-			for i, v := range words {
-				interestsFilter[i] = v
-			}
+			interestsFilter = words
 		}
 	}
 	filtersCount := len(filters)
 	if filtersCount == 0 {
-		//resultIds = append(resultIds, GetIdFromKey(key))
-		//return len(resultIds) < limit
+		//foundAccounts = append(foundAccounts, GetIdFromKey(key))
+		//return len(foundAccounts) < limit
 	}
 
 	// full scan search
 	it := accountMap.Iterator()
 	for it.Next() {
-		if len(resultIds) >= limit {
+		if len(foundAccounts) >= limit {
 			break
 		}
 		passedFilters := 0
@@ -204,18 +191,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if _, ok := filters["fname_not_null"]; ok && value["fname"].String() != "" {
 			passedFilters += 1
 		}
-		if &interestsFilter != nil {
-			//start := time.Now()
-			if account.interestsList.Size() == 0 {
-				continue
-			}
-			if account.interestsList.Contains(interestsFilter...) {
-				passedFilters += 1
-			}
-			//log.Printf("contains took %s", time.Since(start))
-		}
 		if passedFilters == filtersCount {
-			resultIds = append(resultIds, value)
+			foundAccounts = append(foundAccounts, it.Value().(*Account))
 		}
 	}
 
@@ -224,12 +201,29 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	passedFilters += 1
 	//}
 
+	// any
+	//interestsContainsResults := arraylist.New()
+	if &interestsFilter != nil {
+		//	start := time.Now()
+		//OuterLoop:
+		//	for _, v := range interestsFilter {
+		//		for acc := range interestsIndexMap[v].Each() {
+		//			if interestsContainsResults.Contains(acc) {
+		//				continue OuterLoop
+		//			}
+		//			interestsContainsResults.Add(acc)
+		//		}
+		//	}
+		//
+		//	log.Printf("contains took %s", time.Since(start))
+	}
+
 	// order by ID desc
 	// apply limit
 
 	jsonData := []byte(`{"accounts":[]}`)
-	if len(resultIds) > 0 {
-		jsonData, _ = json.Marshal(prepareResponse(resultIds, responseProperties))
+	if len(foundAccounts) > 0 {
+		jsonData, _ = json.Marshal(prepareResponse(foundAccounts, responseProperties))
 	}
 
 	// TODO: Use sjson for updates
@@ -277,32 +271,12 @@ func intersectFoundResults(tempResults []*treeset.Set, limit int) []int {
 	return resultIds
 }
 
-func diffFoundResults(ignoreSet *treeset.Set, tempResults []*treeset.Set) *treeset.Set {
-	resultIds := make([]int, 0)
-	for _, tempSet := range tempResults {
-		it := tempSet.Iterator()
-		for it.Next() {
-			value := it.Value()
-
-			if ignoreSet.Contains(value) {
-				continue
-			}
-
-			resultIds = append(resultIds, value.(int))
-		}
-	}
-
-	resultSet := treeset.NewWith(inverseIntComparator)
-
-	return resultSet
-}
-
-func prepareResponse(found []map[string]gjson.Result, responseProperties []string) *FilterResponse {
+func prepareResponse(found []*Account, responseProperties []string) *FilterResponse {
 	var results = make([]AccountResponse, 0)
 	for _, account := range found {
-		result := make(AccountResponse, 0)
+		result := AccountResponse{}
 		for _, key := range responseProperties {
-			result[key] = account[key].Value()
+			result[key] = account.record[key].Value()
 		}
 		results = append(results, result)
 	}
@@ -310,205 +284,4 @@ func prepareResponse(found []map[string]gjson.Result, responseProperties []strin
 	return &FilterResponse{
 		Accounts: results,
 	}
-}
-
-func eqFilter(sourceMap map[interface{}][]int, value interface{}) []int {
-	resultIds := make([]int, 0)
-
-	resultIds = sourceMap[value]
-
-	return resultIds
-}
-
-func neqFilter(source map[string]*treeset.Set, value string) *treeset.Set {
-	start := time.Now()
-	sets := make([]*treeset.Set, 0)
-	for key, set := range source {
-		if key == value {
-			continue
-		}
-		sets = append(sets, set)
-	}
-	log.Printf("range sources took %s", time.Since(start))
-	resultSet := diffFoundResults(source[value], sets)
-	log.Printf("nonEQ filter took %s", time.Since(start))
-
-	return resultSet
-}
-
-func ltFilter(fKey string, fVal string) []int {
-	resultIds := make([]int, 0)
-	//_ = tx.AscendLessThan(fKey, fVal, func(key, val string) bool {
-	//	resultIds = append(resultIds, GetIdFromKey(key))
-	//	return true //TODO: get not more than limit
-	//})
-
-	return resultIds
-}
-
-func gtFilter(fKey string, fVal string) []int {
-	resultIds := make([]int, 0)
-	//_ = tx.AscendGreaterOrEqual(fKey, fVal, func(key, val string) bool {
-	//	resultIds = append(resultIds, GetIdFromKey(key))
-	//	return true
-	//})
-
-	return resultIds
-}
-
-func nullFilter(fKey string, fVal string) []int {
-	// null - выбрать всех, у кого указано имя (если 0) или не указано (если 1);
-	resultIds := make([]int, 0)
-
-	if fVal == "0" {
-		//_ = tx.Descend(fKey, func(key, val string) bool {
-		//	value := gjson.Parse(val).Get(fKey)
-		//
-		//	isNotEmpty := value.Exists() || value.String() != ""
-		//
-		//	if isNotEmpty {
-		//		resultIds = append(resultIds, GetIdFromKey(key))
-		//	}
-		//
-		//	return isNotEmpty
-		//})
-	}
-
-	if fVal == "1" {
-		//_ = tx.Ascend(fKey, func(key, val string) bool {
-		//	value := gjson.Parse(val).Get(fKey)
-		//
-		//	isEmpty := !value.Exists() || value.String() == ""
-		//
-		//	if isEmpty {
-		//		resultIds = append(resultIds, GetIdFromKey(key))
-		//	}
-		//
-		//	return isEmpty
-		//})
-	}
-
-	return resultIds
-}
-
-func anyFilter(fKey string, fVal string) []int {
-	resultIds := make([]int, 0)
-
-	_ = strings.Split(fVal, ",")
-
-	//if valid {
-	//	resultIds = append(resultIds, GetIdFromKey(key))
-	//}
-
-	return resultIds
-}
-
-func containsFilter(fKey string, fVal string) []int {
-	resultIds := make([]int, 0)
-
-	_ = strings.Split(fVal, ",")
-
-	//if valid {
-	//	resultIds = append(resultIds, GetIdFromKey(key))
-	//}
-
-	return resultIds
-}
-
-func processResults(results []int, original []int) []int {
-	if len(original) > 0 {
-		original = intSliceIntersection(results, original)
-	} else {
-		original = results
-	}
-
-	return original
-}
-
-func stringSliceIntersection(a, b []string) (c []string) {
-	m := make(map[string]bool)
-
-	for _, item := range a {
-		m[item] = true
-	}
-
-	for _, item := range b {
-		if _, ok := m[item]; ok {
-			c = append(c, item)
-		}
-	}
-	return
-}
-
-func intSliceIntersection(a, b []int) (c []int) {
-	m := make(map[int]bool)
-
-	for _, item := range a {
-		m[item] = true
-	}
-
-	for _, item := range b {
-		if _, ok := m[item]; ok {
-			c = append(c, item)
-		}
-	}
-	return
-}
-
-type QInterface interface {
-	sort.Interface
-	// Partition returns slice[:i] and slice[i+1:]
-	// These should references the original memory
-	// since this does an in-place sort
-	Partition(i int) (left QInterface, right QInterface)
-}
-
-func Qsort(a QInterface, prng *rand.Rand) QInterface {
-	if a.Len() < 2 {
-		return a
-	}
-
-	left, right := 0, a.Len()-1
-
-	// Pick a pivot
-	pivotIndex := prng.Int() % a.Len()
-	// Move the pivot to the right
-	a.Swap(pivotIndex, right)
-
-	// Pile elements smaller than the pivot on the left
-	for i := 0; i < a.Len(); i++ {
-		if a.Less(i, right) {
-
-			a.Swap(i, left)
-			left++
-		}
-	}
-
-	// Place the pivot after the last smaller element
-	a.Swap(left, right)
-
-	// Go down the rabbit hole
-	leftSide, rightSide := a.Partition(left)
-	Qsort(leftSide, prng)
-	Qsort(rightSide, prng)
-
-	return a
-}
-
-type QIntSlice []int
-
-func (is QIntSlice) Less(i, j int) bool {
-	return is[i] < is[j]
-}
-
-func (is QIntSlice) Swap(i, j int) {
-	is[i], is[j] = is[j], is[i]
-}
-
-func (is QIntSlice) Len() int {
-	return len(is)
-}
-
-func (is QIntSlice) Partition(i int) (left QInterface, right QInterface) {
-	return QIntSlice(is[:i]), QIntSlice(is[i+1:])
 }

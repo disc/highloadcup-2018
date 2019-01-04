@@ -3,32 +3,46 @@ package main
 import (
 	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/emirpasic/gods/maps/treemap"
-	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/emirpasic/gods/utils"
 	"github.com/tidwall/gjson"
 )
 
 type AccountResponse map[string]interface{}
 
-func GetAccount(id int) map[string]gjson.Result {
-	if acc, ok := accountMap.Get(id); ok {
-		return acc.(map[string]gjson.Result)
-	}
-	return nil
-}
-
 var (
 	inverseIntComparator = func(a, b interface{}) int {
 		return -utils.IntComparator(a, b)
 	}
-	accountMap = treemap.NewWith(inverseIntComparator)
-	sexMap     = make(map[string]*treeset.Set, 0)
-	statusMap  = make(map[string]*treeset.Set, 0)
-	countryMap = make(map[string]*treeset.Set, 0)
-	cityMap    = make(map[string]*treeset.Set, 0)
-	fnameMap   = make(map[string]*treeset.Set, 0)
-	snameMap   = make(map[string]*treeset.Set, 0)
+	accountMap        = treemap.NewWith(inverseIntComparator)
+	interestsIndexMap = map[string]*arraylist.List{}
 )
+
+type Account struct {
+	record map[string]gjson.Result
+}
+
+func UpdateAccount(data gjson.Result) {
+	record := data.Map()
+	recordId := int(record["id"].Int())
+
+	account := &Account{
+		record,
+	}
+
+	record["interests"].ForEach(func(key, value gjson.Result) bool {
+		val := value.String()
+		if _, ok := interestsIndexMap[val]; !ok {
+			interestsIndexMap[val] = arraylist.New()
+		}
+
+		interestsIndexMap[val].Add(val)
+
+		return true
+	})
+
+	//todo: try set
+	accountMap.Put(recordId, account)
+}
 
 /**
 03 sex_eq
@@ -52,71 +66,3 @@ var (
 179 interests_contains sex_eq status_eq
 179 country_null email_lt sex_eq
 */
-
-type Account struct {
-	record        map[string]gjson.Result
-	interestsList *arraylist.List
-}
-
-func UpdateAccount(data gjson.Result) {
-	record := data.Map()
-	recordId := int(record["id"].Int())
-	sex := record["sex"].String()
-	country := record["country"].String()
-	city := record["city"].String()
-	status := record["status"].String()
-	fname := record["fname"].String()
-	sname := record["sname"].String()
-
-	if sex != "" {
-		//if _, ok := sexMap[sex]; !ok {
-		//	sexMap[sex] = treeset.NewWith(inverseIntComparator)
-		//}
-		//sexMap[sex].Add(&record)
-	}
-	if country != "" {
-		if _, ok := countryMap[country]; !ok {
-			countryMap[country] = treeset.NewWith(inverseIntComparator)
-		}
-		countryMap[country].Add(recordId)
-	}
-	if city != "" {
-		if _, ok := cityMap[city]; !ok {
-			cityMap[city] = treeset.NewWith(inverseIntComparator)
-		}
-		cityMap[city].Add(recordId)
-	}
-	if status != "" {
-		if _, ok := statusMap[status]; !ok {
-			statusMap[status] = treeset.NewWith(inverseIntComparator)
-		}
-		statusMap[status].Add(recordId)
-	}
-	if fname != "" {
-		if _, ok := fnameMap[fname]; !ok {
-			fnameMap[fname] = treeset.NewWith(inverseIntComparator)
-		}
-		fnameMap[fname].Add(recordId)
-	}
-	if sname != "" {
-		if _, ok := snameMap[sname]; !ok {
-			snameMap[sname] = treeset.NewWith(inverseIntComparator)
-		}
-		snameMap[sname].Add(recordId)
-	}
-
-	interestsList := arraylist.New()
-	record["interests"].ForEach(func(key, value gjson.Result) bool {
-		interestsList.Add(value.String())
-
-		return true
-	})
-
-	account := &Account{
-		record,
-		interestsList,
-	}
-
-	//todo: try set
-	accountMap.Put(recordId, account)
-}
