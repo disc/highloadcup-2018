@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"math/rand"
 	"sort"
@@ -116,11 +115,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	responseProperties = append(responseProperties, "birth")
 	//}
 	//
-	//interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
+	interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
 	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
-	if bytes.IndexAny(interestsAnyF, "s") > 0 {
 
-	}
 	//
 	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
 	//
@@ -156,12 +153,25 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 
 	}
-	var interestsAnyFilter []string
+	var interestsFilter []interface{}
 	if len(interestsAnyF) > 0 {
 		words := strings.Split(string(interestsAnyF), ",")
 		if len(words) > 0 {
+			interestsFilter = make([]interface{}, len(words))
 			filters["interests_any"] = words
-			interestsAnyFilter = words
+			for i, v := range words {
+				interestsFilter[i] = v
+			}
+		}
+	}
+	if len(interestsContainsF) > 0 {
+		words := strings.Split(string(interestsContainsF), ",")
+		if len(words) > 0 {
+			interestsFilter = make([]interface{}, len(words))
+			filters["interests_contains"] = words
+			for i, v := range words {
+				interestsFilter[i] = v
+			}
 		}
 	}
 	filtersCount := len(filters)
@@ -194,16 +204,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if _, ok := filters["fname_not_null"]; ok && value["fname"].String() != "" {
 			passedFilters += 1
 		}
-		if &interestsAnyFilter != nil {
-			if len(account.interestsMap) == 0 {
+		if &interestsFilter != nil {
+			//start := time.Now()
+			if account.interestsList.Size() == 0 {
 				continue
 			}
-			for _, v := range interestsAnyFilter {
-				if _, ok := account.interestsMap[v]; ok {
-					passedFilters += 1
-					break
-				}
+			if account.interestsList.Contains(interestsFilter...) {
+				passedFilters += 1
 			}
+			//log.Printf("contains took %s", time.Since(start))
 		}
 		if passedFilters == filtersCount {
 			resultIds = append(resultIds, value)

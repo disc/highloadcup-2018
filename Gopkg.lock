@@ -10,10 +10,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:7a0a2fef89d3d66a7ef6604e2b6e73cf54bfebff6afd678c0bf668698bef985c"
+  digest = "1:b5f1cd4fa9838cd8d80dc0fd6a5c0041edbfc7412390770b2f56e826e1c955be"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
+    "lists",
+    "lists/arraylist",
     "maps",
     "maps/treemap",
     "sets",
@@ -114,6 +116,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Sirupsen/logrus",
+    "github.com/emirpasic/gods/lists/arraylist",
     "github.com/emirpasic/gods/maps/treemap",
     "github.com/emirpasic/gods/sets/treeset",
     "github.com/emirpasic/gods/utils",

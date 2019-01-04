@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/emirpasic/gods/utils"
@@ -53,8 +54,8 @@ var (
 */
 
 type Account struct {
-	record       map[string]gjson.Result
-	interestsMap map[string]int
+	record        map[string]gjson.Result
+	interestsList *arraylist.List
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -104,16 +105,16 @@ func UpdateAccount(data gjson.Result) {
 		snameMap[sname].Add(recordId)
 	}
 
-	interestsMap := make(map[string]int, 0)
+	interestsList := arraylist.New()
 	record["interests"].ForEach(func(key, value gjson.Result) bool {
-		interestsMap[value.String()] = 1
+		interestsList.Add(value.String())
 
 		return true
 	})
 
 	account := &Account{
 		record,
-		interestsMap,
+		interestsList,
 	}
 
 	//todo: try set
