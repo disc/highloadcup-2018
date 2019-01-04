@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/emirpasic/gods/sets/treeset"
 
@@ -61,9 +62,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "sex")
 	}
 
-	emailDomainF := ctx.QueryArgs().Peek("email_domain")
-	emailLtF := ctx.QueryArgs().Peek("email_lt")
-	emailGtF := ctx.QueryArgs().Peek("email_gt")
+	//emailDomainF := ctx.QueryArgs().Peek("email_domain")
+	//emailLtF := ctx.QueryArgs().Peek("email_lt")
+	//emailGtF := ctx.QueryArgs().Peek("email_gt")
 
 	statusEqF := ctx.QueryArgs().Peek("status_eq")
 	statusNeqF := ctx.QueryArgs().Peek("status_neq")
@@ -71,288 +72,106 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "status")
 	}
 
-	fnameEqF := ctx.QueryArgs().Peek("fname_eq")
-	fnameAnyF := ctx.QueryArgs().Peek("fname_any")
-	fnameNullF := ctx.QueryArgs().Peek("fname_null")
-	if len(fnameEqF) > 0 || len(fnameAnyF) > 0 {
-		responseProperties = append(responseProperties, "fname")
-	}
+	//fnameEqF := ctx.QueryArgs().Peek("fname_eq")
+	//fnameAnyF := ctx.QueryArgs().Peek("fname_any")
+	//fnameNullF := ctx.QueryArgs().Peek("fname_null")
+	//if len(fnameEqF) > 0 || len(fnameAnyF) > 0 {
+	//	responseProperties = append(responseProperties, "fname")
+	//}
+	//
+	//snameEqF := ctx.QueryArgs().Peek("sname_eq")
+	//snameStartsF := ctx.QueryArgs().Peek("sname_starts")
+	//snameNullF := ctx.QueryArgs().Peek("sname_null")
+	//if len(snameEqF) > 0 || len(snameStartsF) > 0 {
+	//	responseProperties = append(responseProperties, "sname")
+	//}
+	//
+	//phoneCodeF := ctx.QueryArgs().Peek("phone_code")
+	//phoneNullF := ctx.QueryArgs().Peek("phone_null")
+	//if len(phoneCodeF) > 0 {
+	//	responseProperties = append(responseProperties, "phone")
+	//}
+	//
+	//countryEqF := ctx.QueryArgs().Peek("country_eq")
+	//countryNullF := ctx.QueryArgs().Peek("country_null")
+	//if len(countryEqF) > 0 {
+	//	responseProperties = append(responseProperties, "country")
+	//}
+	//
+	//cityEqF := ctx.QueryArgs().Peek("city_eq")
+	//cityAnyF := ctx.QueryArgs().Peek("city_any")
+	//cityNullF := ctx.QueryArgs().Peek("city_null")
+	//if len(cityEqF) > 0 || len(cityAnyF) > 0 {
+	//	responseProperties = append(responseProperties, "city")
+	//}
+	//
+	//birthLtF := ctx.QueryArgs().Peek("birth_lt")
+	//birthGtF := ctx.QueryArgs().Peek("birth_gt")
+	//birthYearF := ctx.QueryArgs().Peek("birth_year")
+	//if len(birthLtF) > 0 || len(birthGtF) > 0 || len(birthYearF) > 0 {
+	//	responseProperties = append(responseProperties, "birth")
+	//}
+	//
+	//interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
+	//interestsAnyF := ctx.QueryArgs().Peek("interests_any")
+	//
+	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
+	//
+	//premiumNowF := ctx.QueryArgs().Peek("premium_now")
+	//premiumNullF := ctx.QueryArgs().Peek("premium_null")
+	//if len(premiumNowF) > 0 {
+	//	responseProperties = append(responseProperties, "premium")
+	//}
 
-	snameEqF := ctx.QueryArgs().Peek("sname_eq")
-	snameStartsF := ctx.QueryArgs().Peek("sname_starts")
-	snameNullF := ctx.QueryArgs().Peek("sname_null")
-	if len(snameEqF) > 0 || len(snameStartsF) > 0 {
-		responseProperties = append(responseProperties, "sname")
-	}
+	var resultIds []map[string]gjson.Result
 
-	phoneCodeF := ctx.QueryArgs().Peek("phone_code")
-	phoneNullF := ctx.QueryArgs().Peek("phone_null")
-	if len(phoneCodeF) > 0 {
-		responseProperties = append(responseProperties, "phone")
-	}
+	//tempResults := make([]*treeset.Set, 0)
 
-	countryEqF := ctx.QueryArgs().Peek("country_eq")
-	countryNullF := ctx.QueryArgs().Peek("country_null")
-	if len(countryEqF) > 0 {
-		responseProperties = append(responseProperties, "country")
-	}
+	filters := make(map[string]interface{})
 
-	cityEqF := ctx.QueryArgs().Peek("city_eq")
-	cityAnyF := ctx.QueryArgs().Peek("city_any")
-	cityNullF := ctx.QueryArgs().Peek("city_null")
-	if len(cityEqF) > 0 || len(cityAnyF) > 0 {
-		responseProperties = append(responseProperties, "city")
-	}
-
-	birthLtF := ctx.QueryArgs().Peek("birth_lt")
-	birthGtF := ctx.QueryArgs().Peek("birth_gt")
-	birthYearF := ctx.QueryArgs().Peek("birth_year")
-	if len(birthLtF) > 0 || len(birthGtF) > 0 || len(birthYearF) > 0 {
-		responseProperties = append(responseProperties, "birth")
-	}
-
-	interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
-	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
-
-	likesContainsF := ctx.QueryArgs().Peek("likes_contains")
-
-	premiumNowF := ctx.QueryArgs().Peek("premium_now")
-	premiumNullF := ctx.QueryArgs().Peek("premium_null")
-	if len(premiumNowF) > 0 {
-		responseProperties = append(responseProperties, "premium")
-	}
-
-	var resultIds []int
-
-	tempResults := make([]*treeset.Set, 0)
-
-	hasFilters := 0
 	if len(sexEqF) > 0 {
-		hasFilters = 1
-		if resultSet, ok := sexMap[string(sexEqF)]; ok {
-			tempResults = append(tempResults, resultSet)
-		}
+		filters["sex_eq"] = string(sexEqF)
 	}
 	if len(statusEqF) > 0 {
-		hasFilters = 1
-		if resultSet, ok := statusMap[string(statusEqF)]; ok {
-			tempResults = append(tempResults, resultSet)
-		}
-	}
-	if len(emailDomainF) > 0 {
-		hasFilters = 1
-		//resultIds = processResults(
-		//	eqFilter("email_domain", string(emailDomainF)),
-		//	resultIds,
-		//)
-	}
-	if len(emailLtF) > 0 {
-		hasFilters = 1
-		value := `{"email":"` + string(emailLtF) + `"}`
-		resultIds = processResults(
-			ltFilter("email", value),
-			resultIds,
-		)
-	}
-	if len(emailGtF) > 0 {
-		hasFilters = 1
-		value := `{"email":"` + string(emailGtF) + `"}`
-		resultIds = processResults(
-			gtFilter("email", value),
-			resultIds,
-		)
+		filters["status_eq"] = string(statusEqF)
 	}
 	if len(statusNeqF) > 0 {
-		hasFilters = 1
-		value := string(statusNeqF)
-		tempResults = append(tempResults, neqFilter(statusMap, value))
+		filters["status_neq"] = string(statusNeqF)
 	}
-	if len(fnameEqF) > 0 {
-		hasFilters = 1
-		if resultSet, ok := fnameMap[string(fnameEqF)]; ok {
-			tempResults = append(tempResults, resultSet)
-		}
-	}
-	if len(fnameAnyF) > 0 {
-		hasFilters = 1
-		resultIds = processResults(
-			anyFilter("fname", string(fnameAnyF)),
-			resultIds,
-		)
-	}
-	if len(fnameNullF) > 0 {
-		hasFilters = 1
-		value := string(fnameNullF)
-		if value == "0" {
-			responseProperties = append(responseProperties, "fname")
-		}
-		resultIds = processResults(
-			nullFilter("fname", value),
-			resultIds,
-		)
-	}
-	if len(snameEqF) > 0 {
-		hasFilters = 1
-		if resultSet, ok := snameMap[string(snameEqF)]; ok {
-			tempResults = append(tempResults, resultSet)
-		}
-	}
-	if len(snameStartsF) > 0 {
-		hasFilters = 1
-		//sSnameStartsF := string(snameStartsF)
-		var foundResults = make([]int, 0)
-
-		resultIds = processResults(
-			foundResults,
-			resultIds,
-		)
-	}
-	if len(snameNullF) > 0 {
-		hasFilters = 1
-		value := string(snameNullF)
-		if value == "0" {
-			responseProperties = append(responseProperties, "sname")
-		}
-		resultIds = processResults(
-			nullFilter("sname", value),
-			resultIds,
-		)
-	}
-	if len(phoneCodeF) > 0 {
-		hasFilters = 1
-		//resultIds = processResults(
-		//	eqFilter("phone_code", string(phoneCodeF)),
-		//	resultIds,
-		//)
-	}
-	if len(phoneNullF) > 0 {
-		hasFilters = 1
-		value := string(phoneNullF)
-		if value == "0" {
-			responseProperties = append(responseProperties, "phone")
-		}
-		resultIds = processResults(
-			nullFilter("phone", value),
-			resultIds,
-		)
-	}
-	if len(countryEqF) > 0 {
-		hasFilters = 1
-		if resultSet, ok := countryMap[string(countryEqF)]; ok {
-			tempResults = append(tempResults, resultSet)
-		}
-	}
-	if len(countryNullF) > 0 {
-		hasFilters = 1
-		value := string(countryNullF)
-
-		if value == "0" {
-			responseProperties = append(responseProperties, "country")
-		}
-		resultIds = processResults(
-			nullFilter("country", value),
-			resultIds,
-		)
-	}
-	if len(cityEqF) > 0 {
-		hasFilters = 1
-		if resultSet, ok := cityMap[string(cityEqF)]; ok {
-			tempResults = append(tempResults, resultSet)
-		}
-	}
-	if len(cityAnyF) > 0 {
-		hasFilters = 1
-		resultIds = processResults(
-			anyFilter("city", string(cityAnyF)),
-			resultIds,
-		)
-	}
-	if len(cityNullF) > 0 {
-		hasFilters = 1
-		value := string(cityNullF)
-		if value == "0" {
-			responseProperties = append(responseProperties, "city")
-		}
-		resultIds = processResults(
-			nullFilter("city", value),
-			resultIds,
-		)
-	}
-	if len(birthLtF) > 0 {
-		hasFilters = 1
-		value := `{"birth":"` + string(birthLtF) + `"}`
-		resultIds = processResults(
-			ltFilter("birth", value),
-			resultIds,
-		)
-	}
-	if len(birthGtF) > 0 {
-		hasFilters = 1
-		value := `{"birth":"` + string(birthGtF) + `"}`
-		resultIds = processResults(
-			gtFilter("birth", value),
-			resultIds,
-		)
-	}
-	if len(birthYearF) > 0 {
-		hasFilters = 1
-		//resultIds = processResults(
-		//	eqFilter("birth_year", string(birthYearF)),
-		//	resultIds,
-		//)
-	}
-	if len(interestsContainsF) > 0 {
-		hasFilters = 1
-		resultIds = processResults(
-			containsFilter("interests", string(interestsContainsF)),
-			resultIds,
-		)
-	}
-	if len(interestsAnyF) > 0 {
-		hasFilters = 1
-		resultIds = processResults(
-			anyFilter("interests", string(interestsAnyF)),
-			resultIds,
-		)
-	}
-	if len(likesContainsF) > 0 {
-		hasFilters = 1
-		resultIds = processResults(
-			containsFilter("likes", string(likesContainsF)),
-			resultIds,
-		)
-	}
-	if string(premiumNowF) == "1" {
-		hasFilters = 1
-		resultIds = processResults(
-			ltFilter("premium_to", fmt.Sprintf("%v", now)),
-			resultIds,
-		)
-	}
-	if len(premiumNullF) > 0 {
-		hasFilters = 1
-		value := string(premiumNullF)
-		if value == "0" {
-			responseProperties = append(responseProperties, "premium")
-		}
-		resultIds = processResults(
-			nullFilter("premium", value),
-			resultIds,
-		)
-	}
-	if hasFilters == 0 {
+	filtersCount := len(filters)
+	if filtersCount == 0 {
 		//resultIds = append(resultIds, GetIdFromKey(key))
 		//return len(resultIds) < limit
 	}
 
-	resultIds = intersectFoundResults(tempResults, limit)
+	// full scan
+	it := accountMap.Iterator()
+	for it.Next() {
+		if len(resultIds) >= limit {
+			break
+		}
+		passedFilters := 0
+		value := *it.Value().(*map[string]gjson.Result)
+		if sexEqFilter, ok := filters["sex_eq"]; ok && sexEqFilter == value["sex"].Value() {
+			passedFilters += 1
+		}
+		if statusEqFilter, ok := filters["status_eq"]; ok && statusEqFilter == value["status"].Value() {
+			passedFilters += 1
+		}
+		if statusNeqFilter, ok := filters["status_neq"]; ok && statusNeqFilter != value["status"].Value() {
+			passedFilters += 1
+		}
+		if passedFilters == filtersCount {
+			resultIds = append(resultIds, value)
+		}
+	}
 
 	// order by ID desc
 	// apply limit
 
 	jsonData := []byte(`{"accounts":[]}`)
 	if len(resultIds) > 0 {
-		jsonData, _ = json.Marshal(prepareReponse(resultIds, responseProperties))
+		jsonData, _ = json.Marshal(prepareResponse(resultIds, responseProperties))
 	}
 
 	// TODO: Use sjson for updates
@@ -420,15 +239,12 @@ func diffFoundResults(ignoreSet *treeset.Set, tempResults []*treeset.Set) *trees
 	return resultSet
 }
 
-func prepareReponse(resultIds []int, responseProperties []string) *FilterResponse {
+func prepareResponse(found []map[string]gjson.Result, responseProperties []string) *FilterResponse {
 	var results = make([]Account, 0)
-	for _, id := range resultIds {
+	for _, account := range found {
 		result := make(Account, 0)
-
-		resultMap := *GetAccount(id)
-
 		for _, key := range responseProperties {
-			result[key] = resultMap[key].Value()
+			result[key] = account[key].Value()
 		}
 		results = append(results, result)
 	}

@@ -9,9 +9,9 @@ import (
 
 type Account map[string]interface{}
 
-func GetAccount(id int) *map[string]gjson.Result {
+func GetAccount(id int) map[string]gjson.Result {
 	if acc, ok := accountMap.Get(id); ok {
-		return acc.(*map[string]gjson.Result)
+		return acc.(map[string]gjson.Result)
 	}
 	return nil
 }
