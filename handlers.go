@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/rand"
 	"sort"
@@ -16,7 +17,7 @@ import (
 )
 
 type FilterResponse struct {
-	Accounts []Account `json:"accounts,string"`
+	Accounts []AccountResponse `json:"accounts,string"`
 }
 
 func filterHandler(ctx *fasthttp.RequestCtx) {
@@ -116,7 +117,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//}
 	//
 	//interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
-	//interestsAnyF := ctx.QueryArgs().Peek("interests_any")
+	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
+	if bytes.IndexAny(interestsAnyF, "s") > 0 {
+
+	}
 	//
 	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
 	//
@@ -152,6 +156,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 
 	}
+	var interestsAnyFilter []string
+	if len(interestsAnyF) > 0 {
+		words := strings.Split(string(interestsAnyF), ",")
+		if len(words) > 0 {
+			filters["interests_any"] = words
+			interestsAnyFilter = words
+		}
+	}
 	filtersCount := len(filters)
 	if filtersCount == 0 {
 		//resultIds = append(resultIds, GetIdFromKey(key))
@@ -165,7 +177,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			break
 		}
 		passedFilters := 0
-		value := *it.Value().(*map[string]gjson.Result)
+		account := *it.Value().(*Account)
+		value := account.record
 		if sexEqFilter, ok := filters["sex_eq"]; ok && value["sex"].Value() == sexEqFilter {
 			passedFilters += 1
 		}
@@ -180,6 +193,17 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if _, ok := filters["fname_not_null"]; ok && value["fname"].String() != "" {
 			passedFilters += 1
+		}
+		if &interestsAnyFilter != nil {
+			if len(account.interestsMap) == 0 {
+				continue
+			}
+			for _, v := range interestsAnyFilter {
+				if _, ok := account.interestsMap[v]; ok {
+					passedFilters += 1
+					break
+				}
+			}
 		}
 		if passedFilters == filtersCount {
 			resultIds = append(resultIds, value)
@@ -265,9 +289,9 @@ func diffFoundResults(ignoreSet *treeset.Set, tempResults []*treeset.Set) *trees
 }
 
 func prepareResponse(found []map[string]gjson.Result, responseProperties []string) *FilterResponse {
-	var results = make([]Account, 0)
+	var results = make([]AccountResponse, 0)
 	for _, account := range found {
-		result := make(Account, 0)
+		result := make(AccountResponse, 0)
 		for _, key := range responseProperties {
 			result[key] = account[key].Value()
 		}

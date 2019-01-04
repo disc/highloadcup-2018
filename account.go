@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type Account map[string]interface{}
+type AccountResponse map[string]interface{}
 
 func GetAccount(id int) map[string]gjson.Result {
 	if acc, ok := accountMap.Get(id); ok {
@@ -51,6 +51,11 @@ var (
 179 interests_contains sex_eq status_eq
 179 country_null email_lt sex_eq
 */
+
+type Account struct {
+	record       map[string]gjson.Result
+	interestsMap map[string]int
+}
 
 func UpdateAccount(data gjson.Result) {
 	record := data.Map()
@@ -99,6 +104,18 @@ func UpdateAccount(data gjson.Result) {
 		snameMap[sname].Add(recordId)
 	}
 
+	interestsMap := make(map[string]int, 0)
+	record["interests"].ForEach(func(key, value gjson.Result) bool {
+		interestsMap[value.String()] = 1
+
+		return true
+	})
+
+	account := &Account{
+		record,
+		interestsMap,
+	}
+
 	//todo: try set
-	accountMap.Put(recordId, &record)
+	accountMap.Put(recordId, account)
 }
