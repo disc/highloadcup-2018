@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/emirpasic/gods/utils"
 	"github.com/tidwall/gjson"
@@ -8,22 +9,18 @@ import (
 
 type Account map[string]interface{}
 
-type AccountResult *gjson.Result
-
-func GetAccount(id int) AccountResult {
-	return accountMap[id]
+func GetAccount(id int) *map[string]gjson.Result {
+	if acc, ok := accountMap.Get(id); ok {
+		return acc.(*map[string]gjson.Result)
+	}
+	return nil
 }
-
-type HashMap map[string][]int
-type TreeSet map[string]*treeset.Set
-
-type AccountMap map[int]AccountResult
 
 var (
 	inverseIntComparator = func(a, b interface{}) int {
 		return -utils.IntComparator(a, b)
 	}
-	accountMap = make(AccountMap, 0)
+	accountMap = treemap.NewWith(inverseIntComparator)
 	sexMap     = make(map[string]*treeset.Set, 0)
 	statusMap  = make(map[string]*treeset.Set, 0)
 	countryMap = make(map[string]*treeset.Set, 0)
@@ -66,10 +63,10 @@ func UpdateAccount(data gjson.Result) {
 	sname := record["sname"].String()
 
 	if sex != "" {
-		if _, ok := sexMap[sex]; !ok {
-			sexMap[sex] = treeset.NewWith(inverseIntComparator)
-		}
-		sexMap[sex].Add(recordId)
+		//if _, ok := sexMap[sex]; !ok {
+		//	sexMap[sex] = treeset.NewWith(inverseIntComparator)
+		//}
+		//sexMap[sex].Add(&record)
 	}
 	if country != "" {
 		if _, ok := countryMap[country]; !ok {
@@ -103,5 +100,5 @@ func UpdateAccount(data gjson.Result) {
 	}
 
 	//todo: try set
-	accountMap[recordId] = &data
+	accountMap.Put(recordId, &record)
 }

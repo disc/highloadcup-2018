@@ -10,12 +10,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:401a6209775674fbb4df0ec8348f7ebfb83888d2067128052f9fab084e60a7d7"
+  digest = "1:7a0a2fef89d3d66a7ef6604e2b6e73cf54bfebff6afd678c0bf668698bef985c"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
-    "lists",
-    "lists/arraylist",
+    "maps",
+    "maps/treemap",
     "sets",
     "sets/treeset",
     "trees",
@@ -55,22 +55,6 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:3297205be37afe3f25875b99ad48babe2aebb6e0cf61631d6d9851ecb266370e"
-  name = "github.com/tidwall/btree"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9876f1454cf0993a53d74c27196993e345f50dd1"
-
-[[projects]]
-  digest = "1:0d52ec71bbf60ef362ba12db486a7639acdc09e703c93c36c43a7844d071b1ce"
-  name = "github.com/tidwall/buntdb"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "2da7c106683f522198cdf55ed8db42b374de50d7"
-  version = "v1.0.0"
-
-[[projects]]
   digest = "1:2cab41f59638fdb77dda96ab4f9b5860ef30f48967557254eba127e43c756f2e"
   name = "github.com/tidwall/gjson"
   packages = ["."]
@@ -79,39 +63,12 @@
   version = "v1.1.3"
 
 [[projects]]
-  branch = "master"
-  digest = "1:403222dac436240f4a747c4ced09c1d5884082d920f151ea6c19abf7a75d4e7c"
-  name = "github.com/tidwall/grect"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ba9a043346eba55344e40d66a5e74cfda3a9d293"
-
-[[projects]]
   digest = "1:8453ddbed197809ee8ca28b06bd04e127bec9912deb4ba451fea7a1eca578328"
   name = "github.com/tidwall/match"
   packages = ["."]
   pruneopts = "UT"
   revision = "33827db735fff6510490d69a8622612558a557ed"
   version = "v1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:54fec16397c72e6ecb5e61309e369517d4ea7aaee4d97454c36075539039ad85"
-  name = "github.com/tidwall/rtree"
-  packages = [
-    ".",
-    "base",
-  ]
-  pruneopts = "UT"
-  revision = "6cd427091e0e662cb4f8e2c9eb1a41e1c46ff0d3"
-
-[[projects]]
-  branch = "master"
-  digest = "1:1b885e925ee7c05565b3178a4fa818bf33885878344d8629ac433a5db99d58e4"
-  name = "github.com/tidwall/tinyqueue"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "1e39f55115634cad2c504631c8bfcc292f2c9c55"
 
 [[projects]]
   digest = "1:c468422f334a6b46a19448ad59aaffdfc0a36b08fdcc1c749a0b29b6453d7e59"
@@ -157,10 +114,9 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Sirupsen/logrus",
-    "github.com/emirpasic/gods/lists/arraylist",
+    "github.com/emirpasic/gods/maps/treemap",
     "github.com/emirpasic/gods/sets/treeset",
     "github.com/emirpasic/gods/utils",
-    "github.com/tidwall/buntdb",
     "github.com/tidwall/gjson",
     "github.com/valyala/fasthttp",
   ]

@@ -425,8 +425,7 @@ func prepareReponse(resultIds []int, responseProperties []string) *FilterRespons
 	for _, id := range resultIds {
 		result := make(Account, 0)
 
-		acc := *GetAccount(id)
-		resultMap := acc.Map()
+		resultMap := *GetAccount(id)
 
 		for _, key := range responseProperties {
 			result[key] = resultMap[key].Value()
