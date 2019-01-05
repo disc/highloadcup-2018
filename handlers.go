@@ -49,10 +49,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		"id", "email",
 	}
 
-	limit := 0
-	if ctx.QueryArgs().Has("limit") {
-		limit, _ = strconv.Atoi(string(ctx.QueryArgs().Peek("limit")))
+	limit, _ := strconv.Atoi(string(ctx.QueryArgs().Peek("limit")))
+	// Limit is required
+	if limit <= 0 {
+		emptyFilterResponse(ctx)
+		return
 	}
+
 	sexEqF := ctx.QueryArgs().Peek("sex_eq")
 	if len(sexEqF) > 0 {
 		responseProperties = append(responseProperties, "sex")
