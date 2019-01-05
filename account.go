@@ -23,6 +23,7 @@ type Account struct {
 	interestsTree *trie.Trie
 	emailBytes    []byte
 	emailDomain   string
+	phoneCode     string
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -43,11 +44,17 @@ func UpdateAccount(data gjson.Result) {
 		emailDomain = components[1]
 	}
 
+	var phoneCode string
+	if record["phone"].Exists() {
+		phoneCode = strings.SplitN(strings.SplitN(record["phone"].String(), "(", 2)[1], ")", 2)[0]
+	}
+
 	account := &Account{
 		record,
 		interestsTree,
 		[]byte(record["email"].String()),
 		emailDomain,
+		phoneCode,
 	}
 
 	//todo: try set

@@ -83,11 +83,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	responseProperties = append(responseProperties, "sname")
 	//}
 	//
-	//phoneCodeF := ctx.QueryArgs().Peek("phone_code")
-	//phoneNullF := ctx.QueryArgs().Peek("phone_null")
-	//if len(phoneCodeF) > 0 {
-	//	responseProperties = append(responseProperties, "phone")
-	//}
+	phoneCodeF := ctx.QueryArgs().Peek("phone_code")
+	phoneNullF := ctx.QueryArgs().Peek("phone_null")
+	if len(phoneCodeF) > 0 {
+		responseProperties = append(responseProperties, "phone")
+	}
 	//
 	//countryEqF := ctx.QueryArgs().Peek("country_eq")
 	//countryNullF := ctx.QueryArgs().Peek("country_null")
@@ -170,6 +170,23 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 
 	}
+	var phoneNullFilter bool
+	var phoneNotNullFilter bool
+	var phoneCodeFilter string
+	if len(phoneNullF) > 0 {
+		if string(phoneNullF) == "0" {
+			phoneNotNullFilter = true
+			filters["phone_not_null"] = 1
+		} else {
+			phoneNullFilter = true
+			filters["phone_null"] = 1
+		}
+
+	}
+	if len(phoneCodeF) > 0 {
+		phoneCodeFilter = string(phoneCodeF)
+		filters["phone_code"] = 1
+	}
 	var interestsAnyFilter []string
 	//var interestsContainsFilter []string
 	if len(interestsAnyF) > 0 {
@@ -230,6 +247,26 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 		} else if fnameNotNullFilter {
 			if value["fname"].String() != "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if phoneNullFilter {
+			if value["phone"].String() == "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		} else if phoneNotNullFilter {
+			if value["phone"].String() != "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if phoneCodeFilter != "" {
+			if account.phoneCode == phoneCodeFilter {
 				passedFilters += 1
 			} else {
 				continue
