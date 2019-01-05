@@ -61,7 +61,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 			ctx.Success("application/json", []byte("{\"groups\":[]}"))
 			return
 		}
-		if pathLen > 15 && path[15] == 'r' {
+		if pathLen > 15 && pathLen <= 17 && path[15] == 'r' {
 			// filter
 			filterHandler(ctx)
 			return

@@ -49,12 +49,17 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		"id", "email",
 	}
 
-	limit, _ := strconv.Atoi(string(ctx.QueryArgs().Peek("limit")))
-	// Limit is required
+	var limit int
+	var err error
+	if limit, err = strconv.Atoi(string(ctx.QueryArgs().Peek("limit"))); err != nil {
+		ctx.Error("{}", 400)
+		return
+	}
 	if limit <= 0 {
 		emptyFilterResponse(ctx)
 		return
 	}
+	// Limit is required
 
 	sexEqF := ctx.QueryArgs().Peek("sex_eq")
 	if len(sexEqF) > 0 {
@@ -251,6 +256,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if string(countryNullF) == "0" {
 			countryNotNullFilter = true
 			filters["country_not_null"] = 1
+			responseProperties = append(responseProperties, "country")
 		} else {
 			countryNullFilter = true
 			filters["country_null"] = 1
@@ -570,13 +576,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if len(interestsAnyFilter) > 0 {
+				suitable := false
 				for _, v := range interestsAnyFilter {
-					if account.interestsTree.HasKeysWithPrefix(v) {
-						passedFilters += 1
+					if _, ok := account.interestsTree.Find(v); ok {
+						suitable = true
 						break
 					}
 				}
-			} else if len(interestsContainsFilter) > 0 {
+				if suitable {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if len(interestsContainsFilter) > 0 {
 				// FIXME: slow solution
 				suitable := true
 				for _, v := range interestsContainsFilter {
