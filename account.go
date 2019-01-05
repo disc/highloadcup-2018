@@ -21,6 +21,8 @@ var (
 	countryMap   = map[string]*treemap.Map{}
 	cityMap      = map[string]*treemap.Map{}
 	birthYearMap = map[int64]*treemap.Map{}
+	fnameMap     = map[string]*treemap.Map{}
+	snameMap     = map[string]*treemap.Map{}
 )
 
 type Account struct {
@@ -38,6 +40,8 @@ func UpdateAccount(data gjson.Result) {
 	recordId := int(record["id"].Int())
 	country := record["country"].String()
 	city := record["city"].String()
+	fname := record["fname"].String()
+	sname := record["sname"].String()
 
 	interestsTree := trie.New()
 
@@ -96,6 +100,18 @@ func UpdateAccount(data gjson.Result) {
 			birthYearMap[birthYear] = treemap.NewWith(inverseIntComparator)
 		}
 		birthYearMap[birthYear].Put(recordId, account)
+	}
+	if fname != "" {
+		if _, ok := fnameMap[fname]; !ok {
+			fnameMap[fname] = treemap.NewWith(inverseIntComparator)
+		}
+		fnameMap[fname].Put(recordId, account)
+	}
+	if sname != "" {
+		if _, ok := snameMap[sname]; !ok {
+			snameMap[sname] = treemap.NewWith(inverseIntComparator)
+		}
+		snameMap[sname].Put(recordId, account)
 	}
 
 	//todo: try set

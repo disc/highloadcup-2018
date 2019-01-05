@@ -78,12 +78,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "fname")
 	}
 	//
-	//snameEqF := ctx.QueryArgs().Peek("sname_eq")
-	//snameStartsF := ctx.QueryArgs().Peek("sname_starts")
+	snameEqF := ctx.QueryArgs().Peek("sname_eq")
+	snameStartsF := ctx.QueryArgs().Peek("sname_starts")
 	snameNullF := ctx.QueryArgs().Peek("sname_null")
-	//if len(snameEqF) > 0 || len(snameStartsF) > 0 {
-	//	responseProperties = append(responseProperties, "sname")
-	//}
+	if len(snameEqF) > 0 || len(snameStartsF) > 0 {
+		responseProperties = append(responseProperties, "sname")
+	}
 	//
 	phoneCodeF := ctx.QueryArgs().Peek("phone_code")
 	phoneNullF := ctx.QueryArgs().Peek("phone_null")
@@ -177,6 +177,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	var fnameNullFilter bool
 	var fnameNotNullFilter bool
+	var fnameEqFilter string
+	if len(fnameEqF) > 0 {
+		fnameEqFilter = string(fnameEqF)
+		filters["fname_eq"] = 1
+	}
 	if len(fnameNullF) > 0 {
 		if string(fnameNullF) == "0" {
 			fnameNotNullFilter = true
@@ -189,6 +194,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	var snameNullFilter bool
 	var snameNotNullFilter bool
+	var snameEqFilter string
+	if len(snameEqF) > 0 {
+		snameEqFilter = string(snameEqF)
+		filters["sname_eq"] = 1
+	}
 	if len(snameNullF) > 0 {
 		if string(snameNullF) == "0" {
 			snameNotNullFilter = true
@@ -303,7 +313,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			)
 		} else {
 			// todo: return empty json
-			index = nil
+			emptyFilterResponse(ctx)
+			return
 		}
 	}
 
@@ -315,7 +326,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			)
 		} else {
 			// todo: return empty json
-			index = nil
+			emptyFilterResponse(ctx)
+			return
 		}
 	}
 
@@ -327,7 +339,34 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			)
 		} else {
 			// todo: return empty json
-			index = nil
+			emptyFilterResponse(ctx)
+			return
+		}
+	}
+
+	if snameEqFilter != "" {
+		if snameMap[snameEqFilter] != nil && snameMap[snameEqFilter].Size() > 0 {
+			suitableIndexes.Put(
+				snameMap[snameEqFilter].Size(),
+				namedIndex{"sname", snameMap[snameEqFilter]},
+			)
+		} else {
+			// todo: return empty json
+			emptyFilterResponse(ctx)
+			return
+		}
+	}
+
+	if fnameEqFilter != "" {
+		if fnameMap[fnameEqFilter] != nil && fnameMap[fnameEqFilter].Size() > 0 {
+			suitableIndexes.Put(
+				fnameMap[fnameEqFilter].Size(),
+				namedIndex{"fname", fnameMap[fnameEqFilter]},
+			)
+		} else {
+			// todo: return empty json
+			emptyFilterResponse(ctx)
+			return
 		}
 	}
 
@@ -372,6 +411,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
+			if fnameEqFilter != "" {
+				// use const for index name
+				if selectedIndexName == "fname" || value["fname"].String() == fnameEqFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
 			if fnameNullFilter {
 				if value["fname"].String() == "" {
 					passedFilters += 1
@@ -380,6 +427,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			} else if fnameNotNullFilter {
 				if value["fname"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if snameEqFilter != "" {
+				// use const for index name
+				if selectedIndexName == "sname" || value["sname"].String() == snameEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -545,6 +600,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	// TODO: Use sjson for updates
 	ctx.Success("application/json", jsonData)
 	return
+}
+
+func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
+	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }
 
 func prepareResponse(found []*Account, responseProperties []string) *FilterResponse {
