@@ -89,11 +89,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "phone")
 	}
 	//
-	//countryEqF := ctx.QueryArgs().Peek("country_eq")
-	//countryNullF := ctx.QueryArgs().Peek("country_null")
-	//if len(countryEqF) > 0 {
-	//	responseProperties = append(responseProperties, "country")
-	//}
+	countryEqF := ctx.QueryArgs().Peek("country_eq")
+	countryNullF := ctx.QueryArgs().Peek("country_null")
+	if len(countryEqF) > 0 {
+		responseProperties = append(responseProperties, "country")
+	}
 	//
 	//cityEqF := ctx.QueryArgs().Peek("city_eq")
 	//cityAnyF := ctx.QueryArgs().Peek("city_any")
@@ -187,6 +187,24 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		phoneCodeFilter = string(phoneCodeF)
 		filters["phone_code"] = 1
 	}
+
+	var countryEqFilter string
+	var countryNullFilter bool
+	var countryNotNullFilter bool
+	if len(countryEqF) > 0 {
+		countryEqFilter = string(countryEqF)
+		filters["country_eq"] = 1
+	}
+	if len(countryNullF) > 0 {
+		if string(countryNullF) == "0" {
+			countryNotNullFilter = true
+			filters["country_not_null"] = 1
+		} else {
+			countryNullFilter = true
+			filters["country_null"] = 1
+		}
+
+	}
 	var interestsAnyFilter []string
 	//var interestsContainsFilter []string
 	if len(interestsAnyF) > 0 {
@@ -267,6 +285,27 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if phoneCodeFilter != "" {
 			if account.phoneCode == phoneCodeFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if len(countryEqFilter) > 0 {
+			// TODO: not optimized, use index
+			if value["country"].String() == countryEqFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if countryNullFilter {
+			if value["country"].String() == "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		} else if countryNotNullFilter {
+			if value["country"].String() != "" {
 				passedFilters += 1
 			} else {
 				continue
