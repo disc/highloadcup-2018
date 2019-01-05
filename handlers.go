@@ -102,12 +102,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	responseProperties = append(responseProperties, "city")
 	//}
 	//
-	//birthLtF := ctx.QueryArgs().Peek("birth_lt")
-	//birthGtF := ctx.QueryArgs().Peek("birth_gt")
-	//birthYearF := ctx.QueryArgs().Peek("birth_year")
-	//if len(birthLtF) > 0 || len(birthGtF) > 0 || len(birthYearF) > 0 {
-	//	responseProperties = append(responseProperties, "birth")
-	//}
+	birthLtF := ctx.QueryArgs().Peek("birth_lt")
+	birthGtF := ctx.QueryArgs().Peek("birth_gt")
+	birthYearF := ctx.QueryArgs().Peek("birth_year")
+	if len(birthLtF) > 0 || len(birthGtF) > 0 {
+		responseProperties = append(responseProperties, "birth")
+	}
 	//
 	interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
 	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
@@ -148,6 +148,21 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		emailGtFilter = emailGtF
 		filters["email_gt"] = 1
 	}
+	var birthYearFilter int
+	if len(birthYearF) > 0 {
+		birthYearFilter, _ = strconv.Atoi(string(birthYearF))
+		filters["birth_year"] = 1
+	}
+	var birthLtFilter int
+	if len(birthLtF) > 0 {
+		birthLtFilter, _ = strconv.Atoi(string(birthLtF))
+		filters["birth_lt"] = 1
+	}
+	var birthGtFilter int
+	if len(birthGtF) > 0 {
+		birthGtFilter, _ = strconv.Atoi(string(birthGtF))
+		filters["birth_gt"] = 1
+	}
 	var statusEqFilter string
 	if len(statusEqF) > 0 {
 		statusEqFilter = string(statusEqF)
@@ -172,7 +187,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 	var phoneNullFilter bool
 	var phoneNotNullFilter bool
-	var phoneCodeFilter string
+	var phoneCodeFilter int
 	if len(phoneNullF) > 0 {
 		if string(phoneNullF) == "0" {
 			phoneNotNullFilter = true
@@ -184,7 +199,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	}
 	if len(phoneCodeF) > 0 {
-		phoneCodeFilter = string(phoneCodeF)
+		phoneCodeFilter, _ = strconv.Atoi(string(phoneCodeF))
 		filters["phone_code"] = 1
 	}
 
@@ -283,7 +298,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				continue
 			}
 		}
-		if phoneCodeFilter != "" {
+		if phoneCodeFilter > 0 {
 			if account.phoneCode == phoneCodeFilter {
 				passedFilters += 1
 			} else {
@@ -291,7 +306,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 		}
 		if len(countryEqFilter) > 0 {
-			// TODO: not optimized, use index
+			// FIXME: not optimized, use index
 			if value["country"].String() == countryEqFilter {
 				passedFilters += 1
 			} else {
@@ -336,6 +351,27 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 		if emailDomainFilter != "" {
 			if account.emailDomain == emailDomainFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if birthLtFilter > 0 {
+			if int(value["birth"].Int()) < birthLtFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		} else if birthGtFilter > 0 {
+			if int(value["birth"].Int()) > birthGtFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if birthYearFilter > 0 {
+			// FIXME: not optimized, use index
+			if account.birthYear == birthYearFilter {
 				passedFilters += 1
 			} else {
 				continue

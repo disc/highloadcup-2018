@@ -1,7 +1,9 @@
 package main
 
 import (
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/derekparker/trie"
 	"github.com/emirpasic/gods/maps/treemap"
@@ -23,7 +25,8 @@ type Account struct {
 	interestsTree *trie.Trie
 	emailBytes    []byte
 	emailDomain   string
-	phoneCode     string
+	phoneCode     int
+	birthYear     int
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -44,9 +47,16 @@ func UpdateAccount(data gjson.Result) {
 		emailDomain = components[1]
 	}
 
-	var phoneCode string
+	var phoneCode int
 	if record["phone"].Exists() {
-		phoneCode = strings.SplitN(strings.SplitN(record["phone"].String(), "(", 2)[1], ")", 2)[0]
+		phoneCodeStr := strings.SplitN(strings.SplitN(record["phone"].String(), "(", 2)[1], ")", 2)[0]
+		phoneCode, _ = strconv.Atoi(phoneCodeStr)
+	}
+
+	var birthYear int
+	if record["birth"].Exists() {
+		tm := time.Unix(int64(record["birth"].Float()), 0)
+		birthYear = tm.Year()
 	}
 
 	account := &Account{
@@ -55,6 +65,7 @@ func UpdateAccount(data gjson.Result) {
 		[]byte(record["email"].String()),
 		emailDomain,
 		phoneCode,
+		birthYear,
 	}
 
 	//todo: try set
