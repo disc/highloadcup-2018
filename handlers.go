@@ -95,12 +95,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "country")
 	}
 	//
-	//cityEqF := ctx.QueryArgs().Peek("city_eq")
-	//cityAnyF := ctx.QueryArgs().Peek("city_any")
-	//cityNullF := ctx.QueryArgs().Peek("city_null")
-	//if len(cityEqF) > 0 || len(cityAnyF) > 0 {
-	//	responseProperties = append(responseProperties, "city")
-	//}
+	cityEqF := ctx.QueryArgs().Peek("city_eq")
+	cityAnyF := ctx.QueryArgs().Peek("city_any")
+	cityNullF := ctx.QueryArgs().Peek("city_null")
+	if len(cityEqF) > 0 || len(cityAnyF) > 0 {
+		responseProperties = append(responseProperties, "city")
+	}
 	//
 	birthLtF := ctx.QueryArgs().Peek("birth_lt")
 	birthGtF := ctx.QueryArgs().Peek("birth_gt")
@@ -220,6 +220,23 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 
 	}
+	var cityEqFilter string
+	var cityNullFilter bool
+	var cityNotNullFilter bool
+	if len(cityEqF) > 0 {
+		cityEqFilter = string(cityEqF)
+		filters["city_eq"] = 1
+	}
+	if len(cityNullF) > 0 {
+		if string(cityNullF) == "0" {
+			cityNotNullFilter = true
+			filters["city_not_null"] = 1
+		} else {
+			cityNullFilter = true
+			filters["city_null"] = 1
+		}
+
+	}
 	var interestsAnyFilter []string
 	//var interestsContainsFilter []string
 	if len(interestsAnyF) > 0 {
@@ -236,6 +253,31 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//		interestsContainsFilter = words
 	//	}
 	//}
+
+	// select index
+	index := accountMap
+	isDefaultIndex := true
+
+	if countryEqFilter != "" && countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
+		index = countryMap[countryEqFilter]
+		isDefaultIndex = false
+
+		delete(filters, "country_eq")
+	} else {
+		// return 404?
+	}
+
+	if cityEqFilter != "" && cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
+		// do not change index if default index already changed
+		if isDefaultIndex {
+			index = cityMap[cityEqFilter]
+		}
+
+		delete(filters, "city_eq")
+	} else {
+		// return 404?
+	}
+
 	filtersCount := len(filters)
 	if filtersCount == 0 {
 		//foundAccounts = append(foundAccounts, GetIdFromKey(key))
@@ -243,7 +285,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	// full scan search
-	it := accountMap.Iterator()
+	it := index.Iterator()
 	for it.Next() {
 		if len(foundAccounts) >= limit {
 			break
@@ -305,14 +347,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				continue
 			}
 		}
-		if len(countryEqFilter) > 0 {
-			// FIXME: not optimized, use index
-			if value["country"].String() == countryEqFilter {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
 		if countryNullFilter {
 			if value["country"].String() == "" {
 				passedFilters += 1
@@ -321,6 +355,19 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 		} else if countryNotNullFilter {
 			if value["country"].String() != "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if cityNullFilter {
+			if value["city"].String() == "" {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		} else if cityNotNullFilter {
+			if value["city"].String() != "" {
 				passedFilters += 1
 			} else {
 				continue
