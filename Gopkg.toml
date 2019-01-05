@@ -30,10 +30,6 @@
   version = "1.2.0"
 
 [[constraint]]
-  name = "github.com/tidwall/buntdb"
-  version = "1.0.0"
-
-[[constraint]]
   name = "github.com/valyala/fasthttp"
   version = "20180529.0.0"
 

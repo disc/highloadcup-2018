@@ -80,7 +80,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//
 	//snameEqF := ctx.QueryArgs().Peek("sname_eq")
 	//snameStartsF := ctx.QueryArgs().Peek("sname_starts")
-	//snameNullF := ctx.QueryArgs().Peek("sname_null")
+	snameNullF := ctx.QueryArgs().Peek("sname_null")
 	//if len(snameEqF) > 0 || len(snameStartsF) > 0 {
 	//	responseProperties = append(responseProperties, "sname")
 	//}
@@ -184,6 +184,18 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		} else {
 			fnameNullFilter = true
 			filters["fname_null"] = 1
+		}
+
+	}
+	var snameNullFilter bool
+	var snameNotNullFilter bool
+	if len(snameNullF) > 0 {
+		if string(snameNullF) == "0" {
+			snameNotNullFilter = true
+			filters["sname_not_null"] = 1
+		} else {
+			snameNullFilter = true
+			filters["sname_null"] = 1
 		}
 
 	}
@@ -373,6 +385,19 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
+			if snameNullFilter {
+				if value["sname"].String() == "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if snameNotNullFilter {
+				if value["sname"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
 			if phoneNullFilter {
 				if value["phone"].String() == "" {
 					passedFilters += 1
@@ -511,14 +536,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 		}
 	}
-
-	// index search
-	//if emailLtFilter, ok := filters["email_lt"].(string); ok && value["email"].String()[0:len(emailLtFilter)] < emailLtFilter {
-	//	passedFilters += 1
-	//}
-
-	// order by ID desc
-	// apply limit
 
 	jsonData := []byte(`{"accounts":[]}`)
 	if len(foundAccounts) > 0 {

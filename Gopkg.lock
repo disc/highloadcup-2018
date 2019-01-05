@@ -18,16 +18,12 @@
   revision = "e608c2733dc704cd4a73f825f4acab8f3c3d4d15"
 
 [[projects]]
-  digest = "1:b5f1cd4fa9838cd8d80dc0fd6a5c0041edbfc7412390770b2f56e826e1c955be"
+  digest = "1:68355419a4217ff45b6e3b2a7db22f8a8d75ffd5f0d456edcf6148d55e78c4b2"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
-    "lists",
-    "lists/arraylist",
     "maps",
     "maps/treemap",
-    "sets",
-    "sets/treeset",
     "trees",
     "trees/redblacktree",
     "utils",
@@ -125,9 +121,7 @@
   input-imports = [
     "github.com/Sirupsen/logrus",
     "github.com/derekparker/trie",
-    "github.com/emirpasic/gods/lists/arraylist",
     "github.com/emirpasic/gods/maps/treemap",
-    "github.com/emirpasic/gods/sets/treeset",
     "github.com/emirpasic/gods/utils",
     "github.com/tidwall/gjson",
     "github.com/valyala/fasthttp",
