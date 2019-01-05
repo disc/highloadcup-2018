@@ -19,6 +19,7 @@ var (
 type Account struct {
 	record        map[string]gjson.Result
 	interestsTree *trie.Trie
+	emailBytes    []byte
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -36,6 +37,7 @@ func UpdateAccount(data gjson.Result) {
 	account := &Account{
 		record,
 		interestsTree,
+		[]byte(record["email"].String()),
 	}
 
 	//todo: try set

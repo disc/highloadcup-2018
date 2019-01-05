@@ -1,11 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 	"strings"
-
-	"github.com/emirpasic/gods/sets/treeset"
 
 	"github.com/valyala/fasthttp"
 )
@@ -134,8 +133,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		sexEqFilter = string(sexEqF)
 		filters["sex_eq"] = 1
 	}
+	var emailLtFilter []byte
 	if len(emailLtF) > 0 {
-		filters["email_lt"] = string(emailLtF)
+		emailLtFilter = emailLtF
+		filters["email_lt"] = 1
+	}
+	var emailGtFilter []byte
+	if len(emailGtF) > 0 {
+		emailGtFilter = emailGtF
+		filters["email_gt"] = 1
 	}
 	var statusEqFilter string
 	if len(statusEqF) > 0 {
@@ -234,8 +240,21 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			//log.Printf("contains took %s", time.Since(start))
 		}
+		if len(emailLtFilter) > 0 {
+			if bytes.Compare(account.emailBytes, emailLtFilter) < 0 {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		} else if len(emailGtFilter) > 0 {
+			if bytes.Compare(account.emailBytes, emailGtFilter) > 0 {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
 		if passedFilters == filtersCount {
-			foundAccounts = append(foundAccounts, it.Value().(*Account))
+			foundAccounts = append(foundAccounts, &account)
 		}
 	}
 
@@ -255,46 +274,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	// TODO: Use sjson for updates
 	ctx.Success("application/json", jsonData)
 	return
-}
-
-func intersectFoundResults(tempResults []*treeset.Set, limit int) []int {
-	resultIds := make([]int, 0)
-	// find smalest set
-	var smalest *treeset.Set
-	for _, set := range tempResults {
-		if smalest == nil {
-			smalest = set
-			continue
-		}
-		if set.Size() < smalest.Size() {
-			smalest = set
-		}
-	}
-
-	if smalest != nil {
-		it := smalest.Iterator()
-		for it.Next() {
-			if len(resultIds) >= limit {
-				break
-			}
-			value := it.Value()
-			ok := true
-			for _, tempSet := range tempResults {
-				if *tempSet == *smalest {
-					continue
-				}
-				if !tempSet.Contains(value) {
-					ok = false
-					break
-				}
-			}
-			if ok {
-				resultIds = append(resultIds, value.(int))
-			}
-		}
-	}
-
-	return resultIds
 }
 
 func prepareResponse(found []*Account, responseProperties []string) *FilterResponse {
