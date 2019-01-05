@@ -20,7 +20,7 @@ var (
 	accountMap   = treemap.NewWith(inverseIntComparator)
 	countryMap   = map[string]*treemap.Map{}
 	cityMap      = map[string]*treemap.Map{}
-	birthYearMap = map[int]*treemap.Map{}
+	birthYearMap = map[int64]*treemap.Map{}
 )
 
 type Account struct {
@@ -29,6 +29,7 @@ type Account struct {
 	emailBytes    []byte
 	emailDomain   string
 	phoneCode     int
+	birthYear     int64
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -57,10 +58,10 @@ func UpdateAccount(data gjson.Result) {
 		phoneCode, _ = strconv.Atoi(phoneCodeStr)
 	}
 
-	var birthYear int
+	var birthYear int64
 	if record["birth"].Exists() {
-		tm := time.Unix(int64(record["birth"].Float()), 0)
-		birthYear = tm.Year()
+		tm := time.Unix(record["birth"].Int(), 0)
+		birthYear = int64(tm.Year())
 	}
 
 	account := &Account{
@@ -69,6 +70,7 @@ func UpdateAccount(data gjson.Result) {
 		[]byte(record["email"].String()),
 		emailDomain,
 		phoneCode,
+		birthYear,
 	}
 
 	if country != "" {

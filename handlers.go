@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emirpasic/gods/maps/treemap"
+
 	"github.com/valyala/fasthttp"
 )
 
@@ -148,19 +150,19 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		emailGtFilter = emailGtF
 		filters["email_gt"] = 1
 	}
-	var birthYearFilter int
+	var birthYearFilter int64
 	if len(birthYearF) > 0 {
-		birthYearFilter, _ = strconv.Atoi(string(birthYearF))
+		birthYearFilter, _ = strconv.ParseInt(string(birthYearF), 10, 32)
 		filters["birth_year"] = 1
 	}
-	var birthLtFilter int
+	var birthLtFilter int64
 	if len(birthLtF) > 0 {
-		birthLtFilter, _ = strconv.Atoi(string(birthLtF))
+		birthLtFilter, _ = strconv.ParseInt(string(birthLtF), 10, 32)
 		filters["birth_lt"] = 1
 	}
-	var birthGtFilter int
+	var birthGtFilter int64
 	if len(birthGtF) > 0 {
-		birthGtFilter, _ = strconv.Atoi(string(birthGtF))
+		birthGtFilter, _ = strconv.ParseInt(string(birthGtF), 10, 32)
 		filters["birth_gt"] = 1
 	}
 	var statusEqFilter string
@@ -254,47 +256,58 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//	}
 	//}
 
-	// select index
-	index := accountMap
-	isDefaultIndex := true
+	var index *treemap.Map
+
+	type namedIndex struct {
+		name  string
+		index *treemap.Map
+	}
+
+	suitableIndexes := treemap.NewWithIntComparator()
+	suitableIndexes.Put(accountMap.Size(), namedIndex{"default", accountMap})
 
 	if countryEqFilter != "" {
 		if countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
-			// do not change index if default index already changed
-			if isDefaultIndex {
-				isDefaultIndex = false
-				index = countryMap[countryEqFilter]
-
-				delete(filters, "country_eq")
-			}
+			suitableIndexes.Put(
+				countryMap[countryEqFilter].Size(),
+				namedIndex{"country", countryMap[countryEqFilter]},
+			)
 		} else {
+			// todo: return empty json
 			index = nil
 		}
 	}
 
 	if cityEqFilter != "" {
 		if cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
-			// do not change index if default index already changed
-			if isDefaultIndex {
-				isDefaultIndex = false
-				index = cityMap[cityEqFilter]
-				delete(filters, "city_eq")
-			}
+			suitableIndexes.Put(
+				cityMap[cityEqFilter].Size(),
+				namedIndex{"city", cityMap[cityEqFilter]},
+			)
 		} else {
+			// todo: return empty json
 			index = nil
 		}
 	}
 
 	if birthYearFilter > 0 {
 		if birthYearMap[birthYearFilter] != nil && birthYearMap[birthYearFilter].Size() > 0 {
-			// do not change index if default index already changed
-			if isDefaultIndex {
-				isDefaultIndex = false
-				index = birthYearMap[birthYearFilter]
-				delete(filters, "birth_year")
-			}
+			suitableIndexes.Put(
+				birthYearMap[birthYearFilter].Size(),
+				namedIndex{"birth_year", birthYearMap[birthYearFilter]},
+			)
 		} else {
+			// todo: return empty json
 			index = nil
+		}
+	}
+
+	var selectedIndexName string
+	if suitableIndexes.Size() > 0 {
+		if _, shortestIndex := suitableIndexes.Min(); &shortestIndex != nil {
+			res := shortestIndex.(namedIndex)
+			selectedIndexName = res.name
+			index = res.index
 		}
 	}
 
@@ -363,6 +376,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
+			if countryEqFilter != "" {
+				// use const for index name
+				if selectedIndexName == "country" || value["country"].String() == countryEqFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
 			if countryNullFilter {
 				if value["country"].String() == "" {
 					passedFilters += 1
@@ -371,6 +392,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			} else if countryNotNullFilter {
 				if value["country"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if cityEqFilter != "" {
+				// use const for index name
+				if selectedIndexName == "city" || value["city"].String() == cityEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -419,14 +448,22 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
+			if birthYearFilter > 0 {
+				// use const for index name
+				if selectedIndexName == "birth_year" || account.birthYear == birthYearFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
 			if birthLtFilter > 0 {
-				if int(value["birth"].Int()) < birthLtFilter {
+				if value["birth"].Int() < birthLtFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if birthGtFilter > 0 {
-				if int(value["birth"].Int()) > birthGtFilter {
+				if value["birth"].Int() > birthGtFilter {
 					passedFilters += 1
 				} else {
 					continue
