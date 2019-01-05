@@ -116,9 +116,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//
 	interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
 	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
-	if len(interestsContainsF) > 0 || len(interestsAnyF) > 0 {
-		//responseProperties = append(responseProperties, "interests")
-	}
 
 	//
 	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
@@ -303,21 +300,21 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		filters["premium_now"] = 1
 	}
 	var interestsAnyFilter []string
-	//var interestsContainsFilter []string
+	var interestsContainsFilter []string
 	if len(interestsAnyF) > 0 {
 		words := strings.Split(string(interestsAnyF), ",")
 		if len(words) > 0 {
-			filters["interests_any"] = 1
 			interestsAnyFilter = words
+			filters["interests_any"] = 1
 		}
 	}
-	//if len(interestsContainsF) > 0 {
-	//	words := strings.Split(string(interestsContainsF), ",")
-	//	if len(words) > 0 {
-	//		filters["interests_contains"] = 1
-	//		interestsContainsFilter = words
-	//	}
-	//}
+	if len(interestsContainsF) > 0 {
+		words := strings.Split(string(interestsContainsF), ",")
+		if len(words) > 0 {
+			interestsContainsFilter = words
+			filters["interests_contains"] = 1
+		}
+	}
 
 	var index *treemap.Map
 
@@ -578,6 +575,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 						passedFilters += 1
 						break
 					}
+				}
+			} else if len(interestsContainsFilter) > 0 {
+				// FIXME: slow solution
+				suitable := true
+				for _, v := range interestsContainsFilter {
+					if !account.interestsTree.HasKeysWithPrefix(v) {
+						suitable = false
+						break
+					}
+				}
+				if suitable {
+					passedFilters += 1
+				} else {
+					continue
 				}
 			}
 			if len(emailLtFilter) > 0 {
