@@ -181,6 +181,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	var fnameNullFilter bool
 	var fnameNotNullFilter bool
 	var fnameEqFilter string
+	var fnameAnyFilter = make(map[string]int, 0)
 	if len(fnameEqF) > 0 {
 		fnameEqFilter = string(fnameEqF)
 		filters["fname_eq"] = 1
@@ -194,6 +195,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			filters["fname_null"] = 1
 		}
 
+	}
+	if len(fnameAnyF) > 0 {
+		words := strings.Split(string(fnameAnyF), ",")
+		for _, word := range words {
+			fnameAnyFilter[word] = 1
+		}
+		filters["fname_any"] = 1
 	}
 	var snameNullFilter bool
 	var snameNotNullFilter bool
@@ -253,11 +261,19 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	}
 	var cityEqFilter string
+	var cityAnyFilter = make(map[string]int, 0)
 	var cityNullFilter bool
 	var cityNotNullFilter bool
 	if len(cityEqF) > 0 {
 		cityEqFilter = string(cityEqF)
 		filters["city_eq"] = 1
+	}
+	if len(cityAnyF) > 0 {
+		words := strings.Split(string(cityAnyF), ",")
+		for _, word := range words {
+			cityAnyFilter[word] = 1
+		}
+		filters["city_any"] = 1
 	}
 	if len(cityNullF) > 0 {
 		if string(cityNullF) == "0" {
@@ -405,14 +421,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
-			if statusEqFilter != "" {
+			if len(statusEqFilter) > 0 {
 				if value["status"].Value() == statusEqFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
-			if statusNeqFilter != "" {
+			if len(statusNeqFilter) > 0 {
 				if value["status"].Value() != statusNeqFilter {
 					passedFilters += 1
 				} else {
@@ -435,6 +451,17 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			} else if fnameNotNullFilter {
 				if value["fname"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if len(fnameAnyFilter) > 0 {
+				fname := account.record["fname"].String()
+				if len(fname) == 0 {
+					continue
+				}
+				if _, ok := fnameAnyFilter[fname]; ok {
 					passedFilters += 1
 				} else {
 					continue
@@ -498,6 +525,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
+			//FIXME: group null/not-null filters
 			if countryNullFilter {
 				if value["country"].String() == "" {
 					passedFilters += 1
@@ -532,15 +560,25 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
+			if len(cityAnyFilter) > 0 {
+				// FIXME: slow solution
+				accountCity := account.record["city"].String()
+				if len(accountCity) == 0 {
+					continue
+				}
+				if _, ok := cityAnyFilter[accountCity]; ok {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
 			if len(interestsAnyFilter) > 0 {
-				//start := time.Now()
 				for _, v := range interestsAnyFilter {
 					if account.interestsTree.HasKeysWithPrefix(v) {
 						passedFilters += 1
 						break
 					}
 				}
-				//log.Printf("contains took %s", time.Since(start))
 			}
 			if len(emailLtFilter) > 0 {
 				if bytes.Compare(account.emailBytes, emailLtFilter) < 0 {
@@ -555,7 +593,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 					continue
 				}
 			}
-			if emailDomainFilter != "" {
+			if len(emailDomainFilter) > 0 {
 				if account.emailDomain == emailDomainFilter {
 					passedFilters += 1
 				} else {
