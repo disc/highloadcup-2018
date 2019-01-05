@@ -118,13 +118,12 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	if len(birthLtF) > 0 || len(birthGtF) > 0 || len(birthYearF) > 0 {
 		responseProperties = append(responseProperties, "birth")
 	}
-	//
+
 	interestsContainsF := ctx.QueryArgs().Peek("interests_contains")
 	interestsAnyF := ctx.QueryArgs().Peek("interests_any")
 
-	//
-	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
-	//
+	likesContainsF := ctx.QueryArgs().Peek("likes_contains")
+
 	premiumNowF := ctx.QueryArgs().Peek("premium_now")
 	premiumNullF := ctx.QueryArgs().Peek("premium_null")
 	if len(premiumNowF) > 0 {
@@ -320,6 +319,17 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			interestsContainsFilter = words
 			filters["interests_contains"] = 1
 		}
+	}
+	var likesContainsFilter []int64
+	if len(likesContainsF) > 0 {
+		accIds := strings.Split(string(likesContainsF), ",")
+		for _, accId := range accIds {
+			if accId, err := strconv.ParseInt(accId, 10, 32); err == nil {
+				likesContainsFilter = append(likesContainsFilter, int64(accId))
+				filters["likes_contains"] = 1
+			}
+		}
+
 	}
 
 	var index *treemap.Map
@@ -594,6 +604,21 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				suitable := true
 				for _, v := range interestsContainsFilter {
 					if !account.interestsTree.HasKeysWithPrefix(v) {
+						suitable = false
+						break
+					}
+				}
+				if suitable {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if len(likesContainsFilter) > 0 {
+				// FIXME: slow solution
+				suitable := true
+				for _, v := range likesContainsFilter {
+					if _, ok := account.likesMap[v]; !ok {
 						suitable = false
 						break
 					}
