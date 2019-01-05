@@ -105,7 +105,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	birthLtF := ctx.QueryArgs().Peek("birth_lt")
 	birthGtF := ctx.QueryArgs().Peek("birth_gt")
 	birthYearF := ctx.QueryArgs().Peek("birth_year")
-	if len(birthLtF) > 0 || len(birthGtF) > 0 {
+	if len(birthLtF) > 0 || len(birthGtF) > 0 || len(birthYearF) > 0 {
 		responseProperties = append(responseProperties, "birth")
 	}
 	//
@@ -258,174 +258,183 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	index := accountMap
 	isDefaultIndex := true
 
-	if countryEqFilter != "" && countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
-		index = countryMap[countryEqFilter]
-		isDefaultIndex = false
+	if countryEqFilter != "" {
+		if countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
+			// do not change index if default index already changed
+			if isDefaultIndex {
+				isDefaultIndex = false
+				index = countryMap[countryEqFilter]
 
-		delete(filters, "country_eq")
-	} else {
-		// return 404?
+				delete(filters, "country_eq")
+			}
+		} else {
+			index = nil
+		}
 	}
 
-	if cityEqFilter != "" && cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
-		// do not change index if default index already changed
-		if isDefaultIndex {
-			index = cityMap[cityEqFilter]
+	if cityEqFilter != "" {
+		if cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
+			// do not change index if default index already changed
+			if isDefaultIndex {
+				isDefaultIndex = false
+				index = cityMap[cityEqFilter]
+				delete(filters, "city_eq")
+			}
+		} else {
+			index = nil
 		}
+	}
 
-		delete(filters, "city_eq")
-	} else {
-		// return 404?
+	if birthYearFilter > 0 {
+		if birthYearMap[birthYearFilter] != nil && birthYearMap[birthYearFilter].Size() > 0 {
+			// do not change index if default index already changed
+			if isDefaultIndex {
+				isDefaultIndex = false
+				index = birthYearMap[birthYearFilter]
+				delete(filters, "birth_year")
+			}
+		} else {
+			index = nil
+		}
 	}
 
 	filtersCount := len(filters)
-	if filtersCount == 0 {
-		//foundAccounts = append(foundAccounts, GetIdFromKey(key))
-		//return len(foundAccounts) < limit
-	}
 
-	// full scan search
-	it := index.Iterator()
-	for it.Next() {
-		if len(foundAccounts) >= limit {
-			break
-		}
-		passedFilters := 0
-		account := *it.Value().(*Account)
-		value := account.record
-		if sexEqFilter != "" {
-			if value["sex"].Value() == sexEqFilter {
-				passedFilters += 1
-			} else {
-				continue
+	if index != nil {
+		it := index.Iterator()
+		for it.Next() {
+			if len(foundAccounts) >= limit {
+				break
 			}
-		}
-		if statusEqFilter != "" {
-			if value["status"].Value() == statusEqFilter {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if statusNeqFilter != "" {
-			if value["status"].Value() != statusNeqFilter {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if fnameNullFilter {
-			if value["fname"].String() == "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		} else if fnameNotNullFilter {
-			if value["fname"].String() != "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if phoneNullFilter {
-			if value["phone"].String() == "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		} else if phoneNotNullFilter {
-			if value["phone"].String() != "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if phoneCodeFilter > 0 {
-			if account.phoneCode == phoneCodeFilter {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if countryNullFilter {
-			if value["country"].String() == "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		} else if countryNotNullFilter {
-			if value["country"].String() != "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if cityNullFilter {
-			if value["city"].String() == "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		} else if cityNotNullFilter {
-			if value["city"].String() != "" {
-				passedFilters += 1
-			} else {
-				continue
-			}
-		}
-		if len(interestsAnyFilter) > 0 {
-			//start := time.Now()
-			for _, v := range interestsAnyFilter {
-				if account.interestsTree.HasKeysWithPrefix(v) {
+			passedFilters := 0
+			account := *it.Value().(*Account)
+			value := account.record
+			if sexEqFilter != "" {
+				if value["sex"].Value() == sexEqFilter {
 					passedFilters += 1
-					break
+				} else {
+					continue
 				}
 			}
-			//log.Printf("contains took %s", time.Since(start))
-		}
-		if len(emailLtFilter) > 0 {
-			if bytes.Compare(account.emailBytes, emailLtFilter) < 0 {
-				passedFilters += 1
-			} else {
-				continue
+			if statusEqFilter != "" {
+				if value["status"].Value() == statusEqFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
 			}
-		} else if len(emailGtFilter) > 0 {
-			if bytes.Compare(account.emailBytes, emailGtFilter) > 0 {
-				passedFilters += 1
-			} else {
-				continue
+			if statusNeqFilter != "" {
+				if value["status"].Value() != statusNeqFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
 			}
-		}
-		if emailDomainFilter != "" {
-			if account.emailDomain == emailDomainFilter {
-				passedFilters += 1
-			} else {
-				continue
+			if fnameNullFilter {
+				if value["fname"].String() == "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if fnameNotNullFilter {
+				if value["fname"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
 			}
-		}
-		if birthLtFilter > 0 {
-			if int(value["birth"].Int()) < birthLtFilter {
-				passedFilters += 1
-			} else {
-				continue
+			if phoneNullFilter {
+				if value["phone"].String() == "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if phoneNotNullFilter {
+				if value["phone"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
 			}
-		} else if birthGtFilter > 0 {
-			if int(value["birth"].Int()) > birthGtFilter {
-				passedFilters += 1
-			} else {
-				continue
+			if phoneCodeFilter > 0 {
+				if account.phoneCode == phoneCodeFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
 			}
-		}
-		if birthYearFilter > 0 {
-			// FIXME: not optimized, use index
-			if account.birthYear == birthYearFilter {
-				passedFilters += 1
-			} else {
-				continue
+			if countryNullFilter {
+				if value["country"].String() == "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if countryNotNullFilter {
+				if value["country"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
 			}
-		}
-		if passedFilters == filtersCount {
-			foundAccounts = append(foundAccounts, &account)
+			if cityNullFilter {
+				if value["city"].String() == "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if cityNotNullFilter {
+				if value["city"].String() != "" {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if len(interestsAnyFilter) > 0 {
+				//start := time.Now()
+				for _, v := range interestsAnyFilter {
+					if account.interestsTree.HasKeysWithPrefix(v) {
+						passedFilters += 1
+						break
+					}
+				}
+				//log.Printf("contains took %s", time.Since(start))
+			}
+			if len(emailLtFilter) > 0 {
+				if bytes.Compare(account.emailBytes, emailLtFilter) < 0 {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if len(emailGtFilter) > 0 {
+				if bytes.Compare(account.emailBytes, emailGtFilter) > 0 {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if emailDomainFilter != "" {
+				if account.emailDomain == emailDomainFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if birthLtFilter > 0 {
+				if int(value["birth"].Int()) < birthLtFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if birthGtFilter > 0 {
+				if int(value["birth"].Int()) > birthGtFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if passedFilters == filtersCount {
+				foundAccounts = append(foundAccounts, &account)
+			}
 		}
 	}
 

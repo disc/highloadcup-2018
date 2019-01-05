@@ -17,9 +17,10 @@ var (
 	inverseIntComparator = func(a, b interface{}) int {
 		return -utils.IntComparator(a, b)
 	}
-	accountMap = treemap.NewWith(inverseIntComparator)
-	countryMap = map[string]*treemap.Map{}
-	cityMap    = map[string]*treemap.Map{}
+	accountMap   = treemap.NewWith(inverseIntComparator)
+	countryMap   = map[string]*treemap.Map{}
+	cityMap      = map[string]*treemap.Map{}
+	birthYearMap = map[int]*treemap.Map{}
 )
 
 type Account struct {
@@ -28,7 +29,6 @@ type Account struct {
 	emailBytes    []byte
 	emailDomain   string
 	phoneCode     int
-	birthYear     int
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -69,7 +69,6 @@ func UpdateAccount(data gjson.Result) {
 		[]byte(record["email"].String()),
 		emailDomain,
 		phoneCode,
-		birthYear,
 	}
 
 	if country != "" {
@@ -83,6 +82,12 @@ func UpdateAccount(data gjson.Result) {
 			cityMap[city] = treemap.NewWith(inverseIntComparator)
 		}
 		cityMap[city].Put(recordId, account)
+	}
+	if birthYear > 0 {
+		if _, ok := birthYearMap[birthYear]; !ok {
+			birthYearMap[birthYear] = treemap.NewWith(inverseIntComparator)
+		}
+		birthYearMap[birthYear].Put(recordId, account)
 	}
 
 	//todo: try set
