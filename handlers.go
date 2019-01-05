@@ -198,9 +198,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	var snameNullFilter bool
 	var snameNotNullFilter bool
 	var snameEqFilter string
+	var snameStartsFilter string
 	if len(snameEqF) > 0 {
 		snameEqFilter = string(snameEqF)
 		filters["sname_eq"] = 1
+	}
+	if len(snameStartsF) > 0 {
+		snameStartsFilter = string(snameStartsF)
+		filters["sname_starts"] = 1
 	}
 	if len(snameNullF) > 0 {
 		if string(snameNullF) == "0" {
@@ -438,6 +443,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			if snameEqFilter != "" {
 				// use const for index name
 				if selectedIndexName == "sname" || value["sname"].String() == snameEqFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if snameStartsFilter != "" {
+				// slow
+				// use const for index name
+				//FIXME: slow solution
+				if strings.HasPrefix(value["sname"].String(), snameStartsFilter) {
 					passedFilters += 1
 				} else {
 					continue
