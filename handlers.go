@@ -133,6 +133,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		sexEqFilter = string(sexEqF)
 		filters["sex_eq"] = 1
 	}
+	var emailDomainFilter string
+	if len(emailDomainF) > 0 {
+		emailDomainFilter = string(emailDomainF)
+		filters["email_domain"] = 1
+	}
 	var emailLtFilter []byte
 	if len(emailLtF) > 0 {
 		emailLtFilter = emailLtF
@@ -248,6 +253,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 		} else if len(emailGtFilter) > 0 {
 			if bytes.Compare(account.emailBytes, emailGtFilter) > 0 {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+		if emailDomainFilter != "" {
+			if account.emailDomain == emailDomainFilter {
 				passedFilters += 1
 			} else {
 				continue

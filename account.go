@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/derekparker/trie"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
@@ -20,6 +22,7 @@ type Account struct {
 	record        map[string]gjson.Result
 	interestsTree *trie.Trie
 	emailBytes    []byte
+	emailDomain   string
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -34,10 +37,17 @@ func UpdateAccount(data gjson.Result) {
 		return true
 	})
 
+	var emailDomain string
+	if record["email"].Exists() {
+		components := strings.Split(record["email"].String(), "@")
+		emailDomain = components[1]
+	}
+
 	account := &Account{
 		record,
 		interestsTree,
 		[]byte(record["email"].String()),
+		emailDomain,
 	}
 
 	//todo: try set
