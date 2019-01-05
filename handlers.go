@@ -633,13 +633,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if premiumNullFilter {
-				if value["premium"].IsObject() {
+				if !value["premium"].IsObject() {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if premiumNotNullFilter {
-				if !value["premium"].IsObject() {
+				if value["premium"].IsObject() {
 					passedFilters += 1
 				} else {
 					continue
