@@ -18,7 +18,7 @@ import (
 var (
 	addr = ":80"
 
-	now = int(time.Now().Unix())
+	now = time.Now().Unix()
 
 	log = logrus.New()
 )
@@ -117,7 +117,7 @@ func parseOptions(filename string) {
 	if file, err := os.OpenFile(filename, os.O_RDONLY, 0644); err == nil {
 		reader := bufio.NewReader(file)
 		if line, _, err := reader.ReadLine(); err == nil {
-			now, _ = strconv.Atoi(string(line))
+			now, _ = strconv.ParseInt(string(line), 10, 32)
 			log.Println("`Now` was updated from options.txt", now)
 		}
 	}

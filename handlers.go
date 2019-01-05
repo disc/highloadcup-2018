@@ -120,11 +120,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	//
 	//likesContainsF := ctx.QueryArgs().Peek("likes_contains")
 	//
-	//premiumNowF := ctx.QueryArgs().Peek("premium_now")
-	//premiumNullF := ctx.QueryArgs().Peek("premium_null")
-	//if len(premiumNowF) > 0 {
-	//	responseProperties = append(responseProperties, "premium")
-	//}
+	premiumNowF := ctx.QueryArgs().Peek("premium_now")
+	premiumNullF := ctx.QueryArgs().Peek("premium_null")
+	if len(premiumNowF) > 0 {
+		responseProperties = append(responseProperties, "premium")
+	}
 
 	var foundAccounts []*Account
 
@@ -238,6 +238,23 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			filters["city_null"] = 1
 		}
 
+	}
+	var premiumNullFilter bool
+	var premiumNotNullFilter bool
+	var premiumNowFilter bool
+	if len(premiumNullF) > 0 {
+		if string(premiumNullF) == "0" {
+			premiumNotNullFilter = true
+			filters["premium_not_null"] = 1
+		} else {
+			premiumNullFilter = true
+			filters["premium_null"] = 1
+		}
+
+	}
+	if bytes.Equal(premiumNowF, []byte("1")) {
+		premiumNowFilter = true
+		filters["premium_now"] = 1
 	}
 	var interestsAnyFilter []string
 	//var interestsContainsFilter []string
@@ -464,6 +481,26 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			} else if birthGtFilter > 0 {
 				if value["birth"].Int() > birthGtFilter {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if premiumNullFilter {
+				if value["premium"].IsObject() {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			} else if premiumNotNullFilter {
+				if !value["premium"].IsObject() {
+					passedFilters += 1
+				} else {
+					continue
+				}
+			}
+			if premiumNowFilter {
+				if account.premiumFinish >= int64(now) {
 					passedFilters += 1
 				} else {
 					continue

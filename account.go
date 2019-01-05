@@ -30,6 +30,7 @@ type Account struct {
 	emailDomain   string
 	phoneCode     int
 	birthYear     int64
+	premiumFinish int64
 }
 
 func UpdateAccount(data gjson.Result) {
@@ -63,6 +64,10 @@ func UpdateAccount(data gjson.Result) {
 		tm := time.Unix(record["birth"].Int(), 0)
 		birthYear = int64(tm.Year())
 	}
+	var premiumFinish int64
+	if record["premium"].IsObject() {
+		premiumFinish = record["premium"].Map()["finish"].Int()
+	}
 
 	account := &Account{
 		record,
@@ -71,6 +76,7 @@ func UpdateAccount(data gjson.Result) {
 		emailDomain,
 		phoneCode,
 		birthYear,
+		premiumFinish,
 	}
 
 	if country != "" {
