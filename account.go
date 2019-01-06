@@ -41,7 +41,7 @@ type Account struct {
 	City      string         `json:"city"`
 	Joined    int            `json:"joined"`
 	Status    string         `json:"status"`
-	Interests []string       `json:"interests"`
+	Interests []string       // temp data
 	Premium   map[string]int `json:"premium"`
 	//TempLikes []map[string]int `json:"likes"` // temp data
 
@@ -61,6 +61,7 @@ func createAccount(acc Account) {
 		for _, interest := range acc.Interests {
 			acc.interestsMap[interest] = struct{}{}
 		}
+		acc.Interests = nil
 	}
 
 	if acc.Email != "" {
