@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/emirpasic/gods/lists/arraylist"
+
 	"github.com/emirpasic/gods/maps/treemap"
 
 	"github.com/valyala/fasthttp"
@@ -15,15 +17,12 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		"country": 1, "city": 1,
 	}
 
-	// check if account exists
-	index, found := similarityMap[accountId]
-	if !found {
-		ctx.Error("{}", 404)
-		return
-	}
 	var requestedAccount *Account
 	if account, ok := accountMap.Get(accountId); ok {
 		requestedAccount = account.(*Account)
+	} else {
+		ctx.Error("{}", 404)
+		return
 	}
 
 	validQueryArgs := true
@@ -40,20 +39,35 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	var limit int
 	var err error
-	if limit, err = strconv.Atoi(string(ctx.QueryArgs().Peek("limit"))); err != nil {
+	if limit, err = strconv.Atoi(string(ctx.QueryArgs().Peek("limit"))); err != nil || limit <= 0 {
 		ctx.Error("{}", 400)
 		return
 	}
-	if limit <= 0 {
-		emptyFilterResponse(ctx)
+	// Limit is required
+	var countryEqF []byte
+	var cityEqF []byte
+	if ctx.QueryArgs().Has("country") {
+		countryEqF = ctx.QueryArgs().Peek("country")
+		if len(countryEqF) == 0 {
+			ctx.Error("{}", 400)
+			return
+		}
+	}
+	if ctx.QueryArgs().Has("city") {
+		cityEqF = ctx.QueryArgs().Peek("city")
+		if len(cityEqF) == 0 {
+			ctx.Error("{}", 400)
+			return
+		}
+	}
+
+	index, hasSuggestions := similarityMap[accountId]
+	if !hasSuggestions {
+		emptySuggestResponse(ctx)
 		return
 	}
-	// Limit is required
 
-	countryEqF := ctx.QueryArgs().Peek("country")
-	cityEqF := ctx.QueryArgs().Peek("city_eq")
-
-	foundAccounts := treemap.NewWith(inverseIntComparator)
+	foundAccounts := arraylist.New()
 
 	filters := make(map[string]interface{})
 
@@ -65,7 +79,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	var cityEqFilter string
 	if len(cityEqF) > 0 {
 		cityEqFilter = string(cityEqF)
-		filters["city_eq"] = 1
+		filters["city"] = 1
 	}
 
 	filtersCount := len(filters)
@@ -97,19 +111,22 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 			}
 
 			if passedFilters == filtersCount {
+				suggestsByOneUser := treemap.NewWith(inverseIntComparator)
 				for likeId := range account.likes {
+					// ignore exists like
 					if _, exists := requestedAccount.likes[likeId]; exists {
 						continue
 					}
-					//if foundAccounts.Size() >= limit {
-					//	break
-					//}
 					if suggestedLike, ok := accountMap.Get(likeId); ok {
 						suggestedAccount := suggestedLike.(*Account)
 						if suggestedAccount.sex != requestedAccount.sex {
-							foundAccounts.Put(suggestedAccount.id, suggestedAccount)
+							// sort by like id from one user
+							suggestsByOneUser.Put(suggestedAccount.id, suggestedAccount)
 						}
 					}
+				}
+				if suggestsByOneUser.Size() > 0 {
+					foundAccounts.Add(suggestsByOneUser.Values()...)
 				}
 			}
 		}
@@ -125,7 +142,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	return
 }
 
-func prepareSuggestResponse(found *treemap.Map, limit int) *FilterResponse {
+func prepareSuggestResponse(found *arraylist.List, limit int) *FilterResponse {
 	// ignore interests, likes
 	responseProperties := []string{
 		"id", "email", "status", "fname", "sname",
@@ -146,4 +163,8 @@ func prepareSuggestResponse(found *treemap.Map, limit int) *FilterResponse {
 	return &FilterResponse{
 		Accounts: results,
 	}
+}
+
+func emptySuggestResponse(ctx *fasthttp.RequestCtx) {
+	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }

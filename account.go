@@ -158,7 +158,6 @@ func UpdateAccount(data gjson.Result) {
 		snameMap[sname].Put(recordId, account)
 	}
 
-	//todo: try set
 	accountMap.Put(recordId, account)
 }
 
@@ -166,7 +165,8 @@ func calculateSimilarityIndex() {
 	accountMap.Each(func(key interface{}, value interface{}) {
 		calculateSimilarityForUser(value.(*Account))
 	})
-	//value, _ := accountMap.Get(6327)
+	// calculate for ine user
+	//value, _ := accountMap.Get(24156)
 	//calculateSimilarityForUser(value.(*Account))
 }
 

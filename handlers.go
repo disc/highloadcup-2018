@@ -56,7 +56,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	if limit <= 0 {
-		emptyFilterResponse(ctx)
+		ctx.Error("{}", 400)
 		return
 	}
 	// Limit is required
