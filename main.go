@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -27,6 +28,11 @@ func main() {
 	log.Println("Started")
 
 	parseDataDir("./data/")
+
+	log.Println("Started calculateSimilarityIndex")
+	calculateSimilarityIndex()
+	log.Println("Finished calculateSimilarityIndex, len is", len(similarityMap))
+
 	log.Println("Data has been parsed completely")
 
 	if err := fasthttp.ListenAndServe(addr, requestHandler); err != nil {
@@ -66,10 +72,9 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 			filterHandler(ctx)
 			return
 		}
-		if pathLen > 21 && path[21] == 't' {
+		if pathLen >= 20 && pathLen <= 30 && path[pathLen-2] == 't' {
 			// suggest
-			//FIXME
-			ctx.Success("application/json", []byte("{\"accounts\":[]}"))
+			suggestHandler(ctx, parseAccountId(path))
 			return
 		}
 		if pathLen > 23 && path[23] == 'd' {
@@ -82,7 +87,21 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		ctx.Error("{}", 404)
 		return
 	}
+}
 
+func parseAccountId(path []byte) int {
+	from := bytes.IndexByte(path[1:], '/')
+	to := bytes.IndexByte(path[from+2:], '/')
+
+	if to == -1 {
+		to = len(path)
+	} else {
+		to += from + 2
+	}
+
+	entityId, _ := strconv.Atoi(string(path[from+2 : to]))
+
+	return entityId
 }
 
 func parseFile(filename string) {

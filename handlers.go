@@ -320,16 +320,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			filters["interests_contains"] = 1
 		}
 	}
-	var likesContainsFilter []int64
+	var likesContainsFilter []int
 	if len(likesContainsF) > 0 {
 		accIds := strings.Split(string(likesContainsF), ",")
 		for _, accId := range accIds {
-			if accId, err := strconv.ParseInt(accId, 10, 32); err == nil {
-				likesContainsFilter = append(likesContainsFilter, int64(accId))
+			if accId, err := strconv.Atoi(accId); err == nil {
+				likesContainsFilter = append(likesContainsFilter, accId)
 				filters["likes_contains"] = 1
 			}
 		}
-
 	}
 
 	var index *treemap.Map
@@ -618,7 +617,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// FIXME: slow solution
 				suitable := true
 				for _, v := range likesContainsFilter {
-					if _, ok := account.likesMap[v]; !ok {
+					if _, ok := account.likes[v]; !ok {
 						suitable = false
 						break
 					}

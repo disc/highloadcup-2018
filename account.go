@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -17,15 +18,21 @@ var (
 	inverseIntComparator = func(a, b interface{}) int {
 		return -utils.IntComparator(a, b)
 	}
-	accountMap   = treemap.NewWith(inverseIntComparator)
-	countryMap   = map[string]*treemap.Map{}
-	cityMap      = map[string]*treemap.Map{}
-	birthYearMap = map[int64]*treemap.Map{}
-	fnameMap     = map[string]*treemap.Map{}
-	snameMap     = map[string]*treemap.Map{}
+	inverseFloat64Comparator = func(a, b interface{}) int {
+		return -utils.Float64Comparator(a, b)
+	}
+	accountMap     = treemap.NewWith(inverseIntComparator)
+	countryMap     = map[string]*treemap.Map{}
+	cityMap        = map[string]*treemap.Map{}
+	birthYearMap   = map[int64]*treemap.Map{}
+	fnameMap       = map[string]*treemap.Map{}
+	snameMap       = map[string]*treemap.Map{}
+	similarityMap  = map[int]*treemap.Map{}
+	globalLikesMap = map[int][]*Account{}
 )
 
 type Account struct {
+	id            int
 	record        map[string]gjson.Result
 	interestsTree *trie.Trie
 	emailBytes    []byte
@@ -33,16 +40,19 @@ type Account struct {
 	phoneCode     int
 	birthYear     int64
 	premiumFinish int64
-	likesMap      map[int64]int
+	sex           string //FIXME: use byte or rune
+	likes         map[int]int
 }
 
 func UpdateAccount(data gjson.Result) {
+	// TODO: unset likes, interests
 	record := data.Map()
 	recordId := int(record["id"].Int())
 	country := record["country"].String()
 	city := record["city"].String()
 	fname := record["fname"].String()
 	sname := record["sname"].String()
+	sex := record["sex"].String()
 
 	interestsTree := trie.New()
 
@@ -74,17 +84,8 @@ func UpdateAccount(data gjson.Result) {
 		premiumFinish = record["premium"].Map()["finish"].Int()
 	}
 
-	likesMap := make(map[int64]int, 0)
-	if record["likes"].IsArray() && len(record["likes"].Array()) > 0 {
-		record["likes"].ForEach(func(key, value gjson.Result) bool {
-			like := value.Map()
-			likesMap[like["id"].Int()] = 1
-
-			return true
-		})
-	}
-
 	account := &Account{
+		recordId,
 		record,
 		interestsTree,
 		[]byte(record["email"].String()),
@@ -92,8 +93,39 @@ func UpdateAccount(data gjson.Result) {
 		phoneCode,
 		birthYear,
 		premiumFinish,
-		likesMap,
+		sex,
+		nil,
 	}
+
+	likesMap := map[int][]int{}
+	if record["likes"].IsArray() && len(record["likes"].Array()) > 0 {
+		record["likes"].ForEach(func(key, value gjson.Result) bool {
+			like := value.Map()
+			accId := int(like["id"].Int())
+			likesMap[accId] = append(likesMap[accId], int(like["ts"].Int()))
+
+			globalLikesMap[accId] = append(globalLikesMap[accId], account)
+
+			return true
+		})
+	}
+
+	uniqLikeMap := map[int]int{}
+	for id, likes := range likesMap {
+		var ts int
+		if len(likes) > 1 {
+			var total = 0
+			for _, value := range likes {
+				total += value
+			}
+			ts = total / int(len(likes))
+		} else {
+			ts = likes[0]
+		}
+		uniqLikeMap[id] = ts
+	}
+
+	account.likes = uniqLikeMap
 
 	if country != "" {
 		if _, ok := countryMap[country]; !ok {
@@ -128,4 +160,34 @@ func UpdateAccount(data gjson.Result) {
 
 	//todo: try set
 	accountMap.Put(recordId, account)
+}
+
+func calculateSimilarityIndex() {
+	accountMap.Each(func(key interface{}, value interface{}) {
+		calculateSimilarityForUser(value.(*Account))
+	})
+	//value, _ := accountMap.Get(6327)
+	//calculateSimilarityForUser(value.(*Account))
+}
+
+func calculateSimilarityForUser(account *Account) {
+	user1Likes := account.likes
+	for likeId, ts1 := range user1Likes {
+		for _, acc2 := range globalLikesMap[likeId] {
+			ts2 := acc2.likes[likeId]
+			var similarity float64
+			if ts1 == ts2 {
+				similarity += 1
+			} else {
+				similarity += 1 / math.Abs(float64(ts1-ts2))
+			}
+			if similarity > 0 {
+				user1Id := account.id
+				if _, ok := similarityMap[user1Id]; !ok {
+					similarityMap[user1Id] = treemap.NewWith(inverseFloat64Comparator)
+				}
+				similarityMap[user1Id].Put(similarity, acc2)
+			}
+		}
+	}
 }
