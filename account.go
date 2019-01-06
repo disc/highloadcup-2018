@@ -30,20 +30,20 @@ var (
 )
 
 type Account struct {
-	ID        int              `json:"id"`
-	Email     string           `json:"email"`
-	Fname     string           `json:"fname"`
-	Sname     string           `json:"sname"`
-	Phone     string           `json:"phone"`
-	Sex       string           `json:"sex"`
-	Birth     int              `json:"birth"`
-	Country   string           `json:"country"`
-	City      string           `json:"city"`
-	Joined    int              `json:"joined"`
-	Status    string           `json:"status"`
-	Interests []string         `json:"interests"`
-	Premium   map[string]int   `json:"premium"`
-	TempLikes []map[string]int `json:"likes"` // temp data
+	ID        int            `json:"id"`
+	Email     string         `json:"email"`
+	Fname     string         `json:"fname"`
+	Sname     string         `json:"sname"`
+	Phone     string         `json:"phone"`
+	Sex       string         `json:"sex"`
+	Birth     int            `json:"birth"`
+	Country   string         `json:"country"`
+	City      string         `json:"city"`
+	Joined    int            `json:"joined"`
+	Status    string         `json:"status"`
+	Interests []string       `json:"interests"`
+	Premium   map[string]int `json:"premium"`
+	//TempLikes []map[string]int `json:"likes"` // temp data
 
 	interestsMap  map[string]struct{} // try map[string]struct{}{}
 	emailDomain   string
