@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"hash/crc32"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +30,8 @@ var (
 	log = logrus.New()
 
 	isDebugMode = os.Getenv("DEBUG")
+
+	crc32q = crc32.MakeTable(0xD5828281)
 )
 
 func main() {
@@ -51,6 +55,9 @@ func main() {
 	log.Println("Finished calculateSimilarityIndex, len is", len(similarityMap))
 
 	log.Println("Data has been parsed completely")
+
+	runtime.GC()
+	log.Println("GC has been finished")
 
 	if err := fasthttp.ListenAndServe(addr, requestHandler); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)

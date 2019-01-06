@@ -750,7 +750,6 @@ func prepareResponse(found []*Account, responseProperties []string) *FilterRespo
 			case "premium":
 				result[key] = account.Premium
 			}
-
 		}
 		results = append(results, result)
 	}

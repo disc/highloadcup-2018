@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hash/crc32"
 	"strconv"
 	"strings"
 	"time"
@@ -29,20 +30,20 @@ var (
 )
 
 type Account struct {
-	ID        int            `json:"id"`
-	Email     string         `json:"email"`
-	Fname     string         `json:"fname"`
-	Sname     string         `json:"sname"`
-	Phone     string         `json:"phone"`
-	Sex       string         `json:"sex"`
-	Birth     int            `json:"birth"`
-	Country   string         `json:"country"`
-	City      string         `json:"city"`
-	Joined    int            `json:"joined"`
-	Status    string         `json:"status"`
-	Interests []string       `json:"interests"`
-	Premium   map[string]int `json:"premium"`
-	//likes     []map[string]int
+	ID        int              `json:"id"`
+	Email     string           `json:"email"`
+	Fname     string           `json:"fname"`
+	Sname     string           `json:"sname"`
+	Phone     string           `json:"phone"`
+	Sex       string           `json:"sex"`
+	Birth     int              `json:"birth"`
+	Country   string           `json:"country"`
+	City      string           `json:"city"`
+	Joined    int              `json:"joined"`
+	Status    string           `json:"status"`
+	Interests []string         `json:"interests"`
+	Premium   map[string]int   `json:"premium"`
+	TempLikes []map[string]int `json:"likes"` // temp data
 
 	interestsMap  map[string]struct{} // try map[string]struct{}{}
 	emailDomain   string
@@ -84,33 +85,31 @@ func createAccount(acc Account) {
 		acc.premiumFinish = int64(finish)
 	}
 
-	//likesMap := map[int][]int{}
-	//if len(acc.Likes) > 0 {
-	//	for _, like := range acc.Likes {
-	//		accId := like["id"]
-	//		likesMap[accId] = append(likesMap[accId], like["ts"])
+	//if len(acc.TempLikes) > 0 {
+	//	likesMap := make(map[int][]int, 0)
+	//	for _, like := range acc.TempLikes {
+	//		likesMap[like["id"]] = append(likesMap[like["id"]], like["ts"])
 	//
-	//		globalLikesMap[accId] = append(globalLikesMap[accId], &acc)
+	//		//globalLikesMap[accId] = append(globalLikesMap[accId], &acc)
 	//	}
-	//	acc.Likes = nil
-	//}
+	//	acc.TempLikes = nil
 	//
-	//uniqLikeMap := map[int]int{}
-	//for id, likes := range likesMap {
-	//	var ts int
-	//	if len(likes) > 1 {
-	//		var total = 0
-	//		for _, value := range likes {
-	//			total += value
+	//	uniqLikeMap := map[int]int{}
+	//	for id, timestamps := range likesMap {
+	//		var ts int
+	//		if len(timestamps) > 1 {
+	//			var total = 0
+	//			for _, value := range timestamps {
+	//				total += value
+	//			}
+	//			ts = total / int(len(timestamps))
+	//		} else {
+	//			ts = timestamps[0]
 	//		}
-	//		ts = total / int(len(likes))
-	//	} else {
-	//		ts = likes[0]
+	//		uniqLikeMap[id] = ts
 	//	}
-	//	uniqLikeMap[id] = ts
+	//	//acc.uniqLikes = uniqLikeMap
 	//}
-	//
-	//acc.uniqLikes = uniqLikeMap
 
 	if acc.Country != "" {
 		if _, ok := countryMap[acc.Country]; !ok {
@@ -175,4 +174,8 @@ func calculateSimilarityForUser(account *Account) {
 	//		}
 	//	}
 	//}
+}
+
+func hashFunc(str string) uint32 {
+	return crc32.Checksum([]byte(str), crc32q)
 }
