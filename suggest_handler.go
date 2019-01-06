@@ -92,10 +92,9 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 			}
 			passedFilters := 0
 			account := *it.Value().(*Account)
-			value := account.record
 
 			if countryEqFilter != "" {
-				if value["country"].String() == countryEqFilter {
+				if account.Country == countryEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -103,7 +102,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 			}
 
 			if cityEqFilter != "" {
-				if value["city"].String() == cityEqFilter {
+				if account.City == cityEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -112,16 +111,16 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 			if passedFilters == filtersCount {
 				suggestsByOneUser := treemap.NewWith(inverseIntComparator)
-				for likeId := range account.likes {
+				for likeId := range account.uniqLikes {
 					// ignore exists like
-					if _, exists := requestedAccount.likes[likeId]; exists {
+					if _, exists := requestedAccount.uniqLikes[likeId]; exists {
 						continue
 					}
 					if suggestedLike, ok := accountMap.Get(likeId); ok {
 						suggestedAccount := suggestedLike.(*Account)
-						if suggestedAccount.sex != requestedAccount.sex {
+						if suggestedAccount.Sex != requestedAccount.Sex {
 							// sort by like id from one user
-							suggestsByOneUser.Put(suggestedAccount.id, suggestedAccount)
+							suggestsByOneUser.Put(suggestedAccount.ID, suggestedAccount)
 						}
 					}
 				}
@@ -143,7 +142,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 }
 
 func prepareSuggestResponse(found *arraylist.List, limit int) *FilterResponse {
-	// ignore interests, likes
+	// ignore interests, uniqLikes
 	responseProperties := []string{
 		"id", "email", "status", "fname", "sname",
 	}
@@ -153,8 +152,16 @@ func prepareSuggestResponse(found *arraylist.List, limit int) *FilterResponse {
 		account := it.Value().(*Account)
 		result := AccountResponse{}
 		for _, key := range responseProperties {
-			if account.record[key].Exists() {
-				result[key] = account.record[key].Value()
+			switch key {
+			case "id":
+				result[key] = account.ID
+			case "email":
+				result[key] = account.Email
+			case "status":
+				result[key] = account.Status
+			case "fname":
+				result[key] = account.Fname
+			case "sname":
 			}
 		}
 		results = append(results, result)

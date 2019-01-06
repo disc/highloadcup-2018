@@ -144,29 +144,29 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		emailDomainFilter = string(emailDomainF)
 		filters["email_domain"] = 1
 	}
-	var emailLtFilter []byte
+	var emailLtFilter string
 	if len(emailLtF) > 0 {
-		emailLtFilter = emailLtF
+		emailLtFilter = string(emailLtF)
 		filters["email_lt"] = 1
 	}
-	var emailGtFilter []byte
+	var emailGtFilter string
 	if len(emailGtF) > 0 {
-		emailGtFilter = emailGtF
+		emailGtFilter = string(emailGtF)
 		filters["email_gt"] = 1
 	}
-	var birthYearFilter int64
+	var birthYearFilter int
 	if len(birthYearF) > 0 {
-		birthYearFilter, _ = strconv.ParseInt(string(birthYearF), 10, 32)
+		birthYearFilter, _ = strconv.Atoi(string(birthYearF))
 		filters["birth_year"] = 1
 	}
-	var birthLtFilter int64
+	var birthLtFilter int
 	if len(birthLtF) > 0 {
-		birthLtFilter, _ = strconv.ParseInt(string(birthLtF), 10, 32)
+		birthLtFilter, _ = strconv.Atoi(string(birthLtF))
 		filters["birth_lt"] = 1
 	}
-	var birthGtFilter int64
+	var birthGtFilter int
 	if len(birthGtF) > 0 {
-		birthGtFilter, _ = strconv.ParseInt(string(birthGtF), 10, 32)
+		birthGtFilter, _ = strconv.Atoi(string(birthGtF))
 		filters["birth_gt"] = 1
 	}
 	var statusEqFilter string
@@ -425,23 +425,22 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			passedFilters := 0
 			account := *it.Value().(*Account)
-			value := account.record
 			if sexEqFilter != "" {
-				if value["sex"].Value() == sexEqFilter {
+				if account.Sex == sexEqFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(statusEqFilter) > 0 {
-				if value["status"].Value() == statusEqFilter {
+				if account.Status == statusEqFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(statusNeqFilter) > 0 {
-				if value["status"].Value() != statusNeqFilter {
+				if account.Status != statusNeqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -449,27 +448,27 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if fnameEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "fname" || value["fname"].String() == fnameEqFilter {
+				if selectedIndexName == "fname" || account.Fname == fnameEqFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if fnameNullFilter {
-				if value["fname"].String() == "" {
+				if account.Fname == "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if fnameNotNullFilter {
-				if value["fname"].String() != "" {
+				if account.Fname != "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(fnameAnyFilter) > 0 {
-				fname := account.record["fname"].String()
+				fname := account.Fname
 				if len(fname) == 0 {
 					continue
 				}
@@ -481,7 +480,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if snameEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "sname" || value["sname"].String() == snameEqFilter {
+				if selectedIndexName == "sname" || account.Sname == snameEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -490,33 +489,33 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// slow
 				// use const for index name
 				//FIXME: slow solution
-				if strings.HasPrefix(value["sname"].String(), snameStartsFilter) {
+				if strings.HasPrefix(account.Sname, snameStartsFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if snameNullFilter {
-				if value["sname"].String() == "" {
+				if account.Sname == "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if snameNotNullFilter {
-				if value["sname"].String() != "" {
+				if account.Sname != "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if phoneNullFilter {
-				if value["phone"].String() == "" {
+				if account.Phone == "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if phoneNotNullFilter {
-				if value["phone"].String() != "" {
+				if account.Phone != "" {
 					passedFilters += 1
 				} else {
 					continue
@@ -531,7 +530,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if countryEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "country" || value["country"].String() == countryEqFilter {
+				if selectedIndexName == "country" || account.Country == countryEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -539,13 +538,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			//FIXME: group null/not-null filters
 			if countryNullFilter {
-				if value["country"].String() == "" {
+				if account.Country == "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if countryNotNullFilter {
-				if value["country"].String() != "" {
+				if account.Country != "" {
 					passedFilters += 1
 				} else {
 					continue
@@ -553,20 +552,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if cityEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "city" || value["city"].String() == cityEqFilter {
+				if selectedIndexName == "city" || account.City == cityEqFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if cityNullFilter {
-				if value["city"].String() == "" {
+				if account.City == "" {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if cityNotNullFilter {
-				if value["city"].String() != "" {
+				if account.City != "" {
 					passedFilters += 1
 				} else {
 					continue
@@ -574,7 +573,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if len(cityAnyFilter) > 0 {
 				// FIXME: slow solution
-				accountCity := account.record["city"].String()
+				accountCity := account.City
 				if len(accountCity) == 0 {
 					continue
 				}
@@ -587,7 +586,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			if len(interestsAnyFilter) > 0 {
 				suitable := false
 				for _, v := range interestsAnyFilter {
-					if _, ok := account.interestsTree.Find(v); ok {
+					if _, ok := account.interestsMap[v]; ok {
 						suitable = true
 						break
 					}
@@ -602,7 +601,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// FIXME: slow solution
 				suitable := true
 				for _, v := range interestsContainsFilter {
-					if !account.interestsTree.HasKeysWithPrefix(v) {
+					if _, ok := account.interestsMap[v]; !ok {
 						suitable = false
 						break
 					}
@@ -617,7 +616,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// FIXME: slow solution
 				suitable := true
 				for _, v := range likesContainsFilter {
-					if _, ok := account.likes[v]; !ok {
+					if _, ok := account.uniqLikes[v]; !ok {
 						suitable = false
 						break
 					}
@@ -629,13 +628,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if len(emailLtFilter) > 0 {
-				if bytes.Compare(account.emailBytes, emailLtFilter) < 0 {
+				if account.Email < emailLtFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if len(emailGtFilter) > 0 {
-				if bytes.Compare(account.emailBytes, emailGtFilter) > 0 {
+				if account.Email > emailGtFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -657,26 +656,26 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if birthLtFilter > 0 {
-				if value["birth"].Int() < birthLtFilter {
+				if account.Birth < birthLtFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if birthGtFilter > 0 {
-				if value["birth"].Int() > birthGtFilter {
+				if account.Birth > birthGtFilter {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if premiumNullFilter {
-				if !value["premium"].IsObject() {
+				if len(account.Premium) == 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if premiumNotNullFilter {
-				if value["premium"].IsObject() {
+				if len(account.Premium) > 0 {
 					passedFilters += 1
 				} else {
 					continue
@@ -709,12 +708,49 @@ func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
 	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }
 
+/**
+"sex_eq":       1,
+		"email_domain": 1, "email_lt": 1, "email_gt": 1,
+		"status_eq": 1, "status_neq": 1,
+		"fname_eq": 1, "fname_any": 1, "fname_null": 1,
+		"sname_eq": 1, "sname_starts": 1, "sname_null": 1,
+		"phone_code": 1, "phone_null": 1,
+		"country_eq": 1, "country_null": 1,
+		"city_eq": 1, "city_any": 1, "city_null": 1,
+		"birth_year": 1, "birth_lt": 1, "birth_gt": 1,
+		"premium_now":    1, "premium_null": 1,
+*/
+
 func prepareResponse(found []*Account, responseProperties []string) *FilterResponse {
 	var results = make([]AccountResponse, 0)
 	for _, account := range found {
 		result := AccountResponse{}
 		for _, key := range responseProperties {
-			result[key] = account.record[key].Value()
+			switch key {
+			case "id":
+				result[key] = account.ID
+			case "sex":
+				result[key] = account.Sex
+			case "email":
+				result[key] = account.Email
+			case "status":
+				result[key] = account.Status
+			case "fname":
+				result[key] = account.Fname
+			case "sname":
+				result[key] = account.Sname
+			case "phone":
+				result[key] = account.Phone
+			case "country":
+				result[key] = account.Country
+			case "city":
+				result[key] = account.City
+			case "birth":
+				result[key] = account.Birth
+			case "premium":
+				result[key] = account.Premium
+			}
+
 		}
 		results = append(results, result)
 	}

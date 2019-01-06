@@ -3,16 +3,20 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/tidwall/gjson"
+	"net/http"
+	_ "net/http/pprof"
+
+	"github.com/gorilla/handlers"
+	_ "github.com/mkevac/debugcharts"
 
 	"github.com/Sirupsen/logrus"
-
 	"github.com/valyala/fasthttp"
 )
 
@@ -22,15 +26,28 @@ var (
 	now = time.Now().Unix()
 
 	log = logrus.New()
+
+	isDebugMode = os.Getenv("DEBUG")
 )
 
 func main() {
+	if isDebugMode != "" {
+		log.Println("Debug-mode enabled")
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+
+		go func() {
+			log.Fatal(http.ListenAndServe(":9090", handlers.CompressHandler(http.DefaultServeMux)))
+		}()
+	}
+
 	log.Println("Started")
 
 	parseDataDir("./data/")
 
 	log.Println("Started calculateSimilarityIndex")
-	calculateSimilarityIndex()
+	//calculateSimilarityIndex()
 	log.Println("Finished calculateSimilarityIndex, len is", len(similarityMap))
 
 	log.Println("Data has been parsed completely")
@@ -50,7 +67,7 @@ GET:
 POST:
 /accounts/new/
 /accounts/<id>/
-/accounts/likes/
+/accounts/uniqLikes/
 */
 
 func requestHandler(ctx *fasthttp.RequestCtx) {
@@ -126,9 +143,15 @@ func parseDataDir(dirPath string) {
 }
 
 func parseAccountsMap(fileBytes []byte) {
-	result := gjson.GetBytes(fileBytes, "accounts")
-	for _, account := range result.Array() {
-		UpdateAccount(account)
+	type jsonKey struct {
+		Accounts []Account
+	}
+
+	var accounts jsonKey
+	json.Unmarshal(fileBytes, &accounts)
+
+	for _, account := range accounts.Accounts {
+		createAccount(account)
 	}
 }
 

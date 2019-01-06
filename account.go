@@ -1,15 +1,12 @@
 package main
 
 import (
-	"math"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/derekparker/trie"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
-	"github.com/tidwall/gjson"
 )
 
 type AccountResponse map[string]interface{}
@@ -24,141 +21,129 @@ var (
 	accountMap     = treemap.NewWith(inverseIntComparator)
 	countryMap     = map[string]*treemap.Map{}
 	cityMap        = map[string]*treemap.Map{}
-	birthYearMap   = map[int64]*treemap.Map{}
+	birthYearMap   = map[int]*treemap.Map{}
 	fnameMap       = map[string]*treemap.Map{}
 	snameMap       = map[string]*treemap.Map{}
 	similarityMap  = map[int]*treemap.Map{}
-	globalLikesMap = map[int][]*Account{}
+	globalLikesMap = map[*Account][]*Account{}
 )
 
 type Account struct {
-	id            int
-	record        map[string]gjson.Result
-	interestsTree *trie.Trie
-	emailBytes    []byte
+	ID        int            `json:"id"`
+	Email     string         `json:"email"`
+	Fname     string         `json:"fname"`
+	Sname     string         `json:"sname"`
+	Phone     string         `json:"phone"`
+	Sex       string         `json:"sex"`
+	Birth     int            `json:"birth"`
+	Country   string         `json:"country"`
+	City      string         `json:"city"`
+	Joined    int            `json:"joined"`
+	Status    string         `json:"status"`
+	Interests []string       `json:"interests"`
+	Premium   map[string]int `json:"premium"`
+	//likes     []map[string]int
+
+	interestsMap  map[string]struct{} // try map[string]struct{}{}
 	emailDomain   string
 	phoneCode     int
-	birthYear     int64
+	birthYear     int
 	premiumFinish int64
-	sex           string //FIXME: use byte or rune
-	likes         map[int]int
+	uniqLikes     map[int]int
 }
 
-func UpdateAccount(data gjson.Result) {
-	// TODO: unset likes, interests
-	record := data.Map()
-	recordId := int(record["id"].Int())
-	country := record["country"].String()
-	city := record["city"].String()
-	fname := record["fname"].String()
-	sname := record["sname"].String()
-	sex := record["sex"].String()
+func createAccount(acc Account) {
+	// TODO: unset uniqLikes, interests
 
-	interestsTree := trie.New()
-
-	record["interests"].ForEach(func(key, value gjson.Result) bool {
-		interestsTree.Add(value.String(), 1)
-
-		return true
-	})
-
-	var emailDomain string
-	if record["email"].Exists() {
-		components := strings.Split(record["email"].String(), "@")
-		emailDomain = components[1]
-	}
-
-	var phoneCode int
-	if record["phone"].Exists() {
-		phoneCodeStr := strings.SplitN(strings.SplitN(record["phone"].String(), "(", 2)[1], ")", 2)[0]
-		phoneCode, _ = strconv.Atoi(phoneCodeStr)
-	}
-
-	var birthYear int64
-	if record["birth"].Exists() {
-		tm := time.Unix(record["birth"].Int(), 0)
-		birthYear = int64(tm.Year())
-	}
-	var premiumFinish int64
-	if record["premium"].IsObject() {
-		premiumFinish = record["premium"].Map()["finish"].Int()
-	}
-
-	account := &Account{
-		recordId,
-		record,
-		interestsTree,
-		[]byte(record["email"].String()),
-		emailDomain,
-		phoneCode,
-		birthYear,
-		premiumFinish,
-		sex,
-		nil,
-	}
-
-	likesMap := map[int][]int{}
-	if record["likes"].IsArray() && len(record["likes"].Array()) > 0 {
-		record["likes"].ForEach(func(key, value gjson.Result) bool {
-			like := value.Map()
-			accId := int(like["id"].Int())
-			likesMap[accId] = append(likesMap[accId], int(like["ts"].Int()))
-
-			globalLikesMap[accId] = append(globalLikesMap[accId], account)
-
-			return true
-		})
-	}
-
-	uniqLikeMap := map[int]int{}
-	for id, likes := range likesMap {
-		var ts int
-		if len(likes) > 1 {
-			var total = 0
-			for _, value := range likes {
-				total += value
-			}
-			ts = total / int(len(likes))
-		} else {
-			ts = likes[0]
+	if len(acc.Interests) > 0 {
+		acc.interestsMap = make(map[string]struct{})
+		for _, interest := range acc.Interests {
+			acc.interestsMap[interest] = struct{}{}
 		}
-		uniqLikeMap[id] = ts
 	}
 
-	account.likes = uniqLikeMap
-
-	if country != "" {
-		if _, ok := countryMap[country]; !ok {
-			countryMap[country] = treemap.NewWith(inverseIntComparator)
+	if acc.Email != "" {
+		components := strings.Split(acc.Email, "@")
+		if len(components) > 0 {
+			acc.emailDomain = components[1]
 		}
-		countryMap[country].Put(recordId, account)
-	}
-	if city != "" {
-		if _, ok := cityMap[city]; !ok {
-			cityMap[city] = treemap.NewWith(inverseIntComparator)
-		}
-		cityMap[city].Put(recordId, account)
-	}
-	if birthYear > 0 {
-		if _, ok := birthYearMap[birthYear]; !ok {
-			birthYearMap[birthYear] = treemap.NewWith(inverseIntComparator)
-		}
-		birthYearMap[birthYear].Put(recordId, account)
-	}
-	if fname != "" {
-		if _, ok := fnameMap[fname]; !ok {
-			fnameMap[fname] = treemap.NewWith(inverseIntComparator)
-		}
-		fnameMap[fname].Put(recordId, account)
-	}
-	if sname != "" {
-		if _, ok := snameMap[sname]; !ok {
-			snameMap[sname] = treemap.NewWith(inverseIntComparator)
-		}
-		snameMap[sname].Put(recordId, account)
 	}
 
-	accountMap.Put(recordId, account)
+	if acc.Phone != "" {
+		phoneCodeStr := strings.SplitN(strings.SplitN(acc.Phone, "(", 2)[1], ")", 2)[0]
+		if phoneCode, err := strconv.Atoi(phoneCodeStr); err == nil {
+			acc.phoneCode = phoneCode
+		}
+	}
+
+	if acc.Birth != 0 {
+		tm := time.Unix(int64(acc.Birth), 0)
+		acc.birthYear = tm.Year()
+	}
+	if finish, ok := acc.Premium["finish"]; ok {
+		acc.premiumFinish = int64(finish)
+	}
+
+	//likesMap := map[int][]int{}
+	//if len(acc.Likes) > 0 {
+	//	for _, like := range acc.Likes {
+	//		accId := like["id"]
+	//		likesMap[accId] = append(likesMap[accId], like["ts"])
+	//
+	//		globalLikesMap[accId] = append(globalLikesMap[accId], &acc)
+	//	}
+	//	acc.Likes = nil
+	//}
+	//
+	//uniqLikeMap := map[int]int{}
+	//for id, likes := range likesMap {
+	//	var ts int
+	//	if len(likes) > 1 {
+	//		var total = 0
+	//		for _, value := range likes {
+	//			total += value
+	//		}
+	//		ts = total / int(len(likes))
+	//	} else {
+	//		ts = likes[0]
+	//	}
+	//	uniqLikeMap[id] = ts
+	//}
+	//
+	//acc.uniqLikes = uniqLikeMap
+
+	if acc.Country != "" {
+		if _, ok := countryMap[acc.Country]; !ok {
+			countryMap[acc.Country] = treemap.NewWith(inverseIntComparator)
+		}
+		countryMap[acc.Country].Put(acc.ID, &acc)
+	}
+	if acc.City != "" {
+		if _, ok := cityMap[acc.City]; !ok {
+			cityMap[acc.City] = treemap.NewWith(inverseIntComparator)
+		}
+		cityMap[acc.City].Put(acc.ID, &acc)
+	}
+	if acc.birthYear > 0 {
+		if _, ok := birthYearMap[acc.birthYear]; !ok {
+			birthYearMap[acc.birthYear] = treemap.NewWith(inverseIntComparator)
+		}
+		birthYearMap[acc.birthYear].Put(acc.ID, &acc)
+	}
+	if acc.Fname != "" {
+		if _, ok := fnameMap[acc.Fname]; !ok {
+			fnameMap[acc.Fname] = treemap.NewWith(inverseIntComparator)
+		}
+		fnameMap[acc.Fname].Put(acc.ID, &acc)
+	}
+	if acc.Sname != "" {
+		if _, ok := snameMap[acc.Sname]; !ok {
+			snameMap[acc.Sname] = treemap.NewWith(inverseIntComparator)
+		}
+		snameMap[acc.Sname].Put(acc.ID, &acc)
+	}
+
+	accountMap.Put(acc.ID, &acc)
 }
 
 func calculateSimilarityIndex() {
@@ -171,23 +156,23 @@ func calculateSimilarityIndex() {
 }
 
 func calculateSimilarityForUser(account *Account) {
-	user1Likes := account.likes
-	for likeId, ts1 := range user1Likes {
-		for _, acc2 := range globalLikesMap[likeId] {
-			ts2 := acc2.likes[likeId]
-			var similarity float64
-			if ts1 == ts2 {
-				similarity += 1
-			} else {
-				similarity += 1 / math.Abs(float64(ts1-ts2))
-			}
-			if similarity > 0 {
-				user1Id := account.id
-				if _, ok := similarityMap[user1Id]; !ok {
-					similarityMap[user1Id] = treemap.NewWith(inverseFloat64Comparator)
-				}
-				similarityMap[user1Id].Put(similarity, acc2)
-			}
-		}
-	}
+	//user1Likes := account.uniqLikes
+	//for likeId, ts1 := range user1Likes {
+	//	for _, acc2 := range globalLikesMap[likeId] {
+	//		ts2 := acc2.uniqLikes[likeId]
+	//		var similarity float64
+	//		if ts1 == ts2 {
+	//			similarity += 1
+	//		} else {
+	//			similarity += 1 / math.Abs(float64(ts1-ts2))
+	//		}
+	//		if similarity > 0 {
+	//			user1Id := account.ID
+	//			if _, ok := similarityMap[user1Id]; !ok {
+	//				similarityMap[user1Id] = treemap.NewWith(inverseFloat64Comparator)
+	//			}
+	//			similarityMap[user1Id].Put(similarity, acc2)
+	//		}
+	//	}
+	//}
 }
