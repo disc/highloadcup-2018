@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mailru/easyjson/buffer"
-
 	"github.com/emirpasic/gods/maps/treemap"
 
 	"github.com/valyala/fasthttp"
@@ -703,8 +701,8 @@ func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
 }
 
 func prepareResponse(found []*Account, responseProperties []string) []byte {
-	results := buffer.Buffer{}
-	results.AppendString(`{"accounts":[`)
+	var results bytes.Buffer
+	results.WriteString(`{"accounts":[`)
 
 	keysLen := len(responseProperties)
 	foundLen := len(found)
@@ -712,7 +710,7 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 	for accIdx, account := range found {
 		lastAcc := accIdx == foundLen-1
 		_ = lastAcc
-		result := buffer.Buffer{}
+		var result bytes.Buffer
 		for keyIdx, key := range responseProperties {
 			first := keyIdx == 0
 			last := keyIdx == keysLen-1
@@ -721,64 +719,57 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 
 			switch key {
 			case "id":
-				result.AppendString(`,"id":`)
-				result.Buf = strconv.AppendInt(result.Buf, int64(account.ID), 10)
+				result.WriteString(`,"id":`)
+				result.Write([]byte(strconv.Itoa(account.ID)))
 			case "sex":
-				result.AppendString(`,"sex":`)
-				result.AppendString(`"` + account.Sex + `"`)
+				result.WriteString(`,"sex":`)
+				result.WriteString(`"` + account.Sex + `"`)
 			case "email":
-				//	result[key] = account.Email
-				result.AppendString(`,"email":`)
-				result.AppendString(`"` + account.Email + `"`)
+				result.WriteString(`,"email":`)
+				result.WriteString(`"` + account.Email + `"`)
 			case "status":
-				//	result[key] = account.Status
-				result.AppendString(`,"status":`)
-				result.AppendString(`"` + account.Status + `"`)
+				result.WriteString(`,"status":`)
+				result.WriteString(`"` + account.Status + `"`)
 			case "fname":
-				result.AppendString(`,"fname":`)
-				result.AppendString(`"` + account.Fname + `"`)
-			//	result[key] = account.Fname
+				result.WriteString(`,"fname":`)
+				result.WriteString(`"` + account.Fname + `"`)
 			case "sname":
-				result.AppendString(`,"sname":`)
-				result.AppendString(`"` + account.Sname + `"`)
-			//	result[key] = account.Sname
+				result.WriteString(`,"sname":`)
+				result.WriteString(`"` + account.Sname + `"`)
 			case "phone":
-				result.AppendString(`,"phone":`)
-				result.AppendString(`"` + account.Phone + `"`)
-			//	result[key] = account.Phone
+				result.WriteString(`,"phone":`)
+				result.WriteString(`"` + account.Phone + `"`)
 			case "country":
-				result.AppendString(`,"country":`)
-				result.AppendString(`"` + account.Country + `"`)
-			//	result[key] = account.Country
+				result.WriteString(`,"country":`)
+				result.WriteString(`"` + account.Country + `"`)
 			case "city":
-				result.AppendString(`,"city":`)
-				result.AppendString(`"` + account.City + `"`)
-			//	result[key] = account.City
+				result.WriteString(`,"city":`)
+				result.WriteString(`"` + account.City + `"`)
 			case "birth":
-				result.AppendString(`,"birth":`)
-				result.Buf = strconv.AppendInt(result.Buf, int64(account.Birth), 10)
+				result.WriteString(`,"birth":`)
+				result.Write([]byte(strconv.Itoa(account.Birth)))
 			case "premium":
 				if account.Premium == nil {
-					result.AppendString(`,"premium":null`)
+					result.WriteString(`,"premium":null`)
 				} else {
-					result.AppendString(`,"premium":{"start":`)
-					result.Buf = strconv.AppendInt(result.Buf, int64(account.Premium["start"]), 10)
-					result.AppendString(`,"finish":`)
-					result.Buf = strconv.AppendInt(result.Buf, int64(account.Premium["finish"]), 10)
-					result.AppendString(`}`)
+					result.WriteString(`,"premium":{"start":`)
+					result.Write([]byte(strconv.Itoa(account.Premium["start"])))
+					result.WriteString(`,"finish":`)
+					result.Write([]byte(strconv.Itoa(account.Premium["finish"])))
+					result.WriteString(`}`)
 				}
 			}
 		}
 
-		results.AppendString("{")
-		results.AppendBytes(result.BuildBytes()[1:])
-		results.AppendString("}")
+		results.WriteString("{")
+		results.Write(result.Bytes()[1:])
+		results.WriteString("}")
 		if !lastAcc {
-			results.AppendString(",")
+			results.WriteString(",")
 		}
 	}
 
-	results.AppendString("]}")
+	results.WriteString("]}")
 
-	return results.BuildBytes()
+	return results.Bytes()
 }
