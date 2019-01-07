@@ -14,23 +14,23 @@ type FilterResponse struct {
 	Accounts []AccountResponse `json:"accounts,string"`
 }
 
-func filterHandler(ctx *fasthttp.RequestCtx) {
-	allowedParams := map[string]int{
-		"query_id": 1, "limit": 1,
-		"sex_eq":       1,
-		"email_domain": 1, "email_lt": 1, "email_gt": 1,
-		"status_eq": 1, "status_neq": 1,
-		"fname_eq": 1, "fname_any": 1, "fname_null": 1,
-		"sname_eq": 1, "sname_starts": 1, "sname_null": 1,
-		"phone_code": 1, "phone_null": 1,
-		"country_eq": 1, "country_null": 1,
-		"city_eq": 1, "city_any": 1, "city_null": 1,
-		"birth_year": 1, "birth_lt": 1, "birth_gt": 1,
-		"interests_contains": 1, "interests_any": 1,
-		"likes_contains": 1,
-		"premium_now":    1, "premium_null": 1,
-	}
+var allowedParams = map[string]int{
+	"query_id": 1, "limit": 1,
+	"sex_eq":       1,
+	"email_domain": 1, "email_lt": 1, "email_gt": 1,
+	"status_eq": 1, "status_neq": 1,
+	"fname_eq": 1, "fname_any": 1, "fname_null": 1,
+	"sname_eq": 1, "sname_starts": 1, "sname_null": 1,
+	"phone_code": 1, "phone_null": 1,
+	"country_eq": 1, "country_null": 1,
+	"city_eq": 1, "city_any": 1, "city_null": 1,
+	"birth_year": 1, "birth_lt": 1, "birth_gt": 1,
+	"interests_contains": 1, "interests_any": 1,
+	"likes_contains": 1,
+	"premium_now":    1, "premium_null": 1,
+}
 
+func filterHandler(ctx *fasthttp.RequestCtx) {
 	validQueryArgs := true
 	ctx.QueryArgs().VisitAll(func(key, value []byte) {
 		if _, ok := allowedParams[string(key)]; !ok {
@@ -343,7 +343,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		index *treemap.Map
 	}
 
-	suitableIndexes := treemap.NewWithIntComparator()
+	suitableIndexes := pool.Get().(*treemap.Map)
+	suitableIndexes.Clear()
 	suitableIndexes.Put(accountMap.Size(), namedIndex{"default", accountMap})
 
 	if countryEqFilter != "" {
@@ -690,6 +691,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		jsonData = prepareResponse(foundAccounts, responseProperties)
 	}
 
+	pool.Put(suitableIndexes)
+
 	// TODO: Use sjson for updates
 	ctx.Success("application/json", jsonData)
 	return
@@ -720,7 +723,7 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 			switch key {
 			case "id":
 				results.WriteString(`"id":`)
-				results.Write([]byte(strconv.Itoa(account.ID)))
+				results.Write(fasthttp.AppendUint(nil, account.ID))
 			case "sex":
 				results.WriteString(`"sex":`)
 				results.WriteString(`"` + account.Sex + `"`)

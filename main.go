@@ -10,11 +10,13 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/gorilla/handlers"
 	_ "github.com/mkevac/debugcharts"
 
@@ -32,7 +34,17 @@ var (
 	isDebugMode = os.Getenv("DEBUG")
 
 	crc32q = crc32.MakeTable(0xD5828281)
+
+	pool *sync.Pool
 )
+
+func initPool() {
+	pool = &sync.Pool{
+		New: func() interface{} {
+			return treemap.NewWithIntComparator()
+		},
+	}
+}
 
 func main() {
 	if isDebugMode != "" {
@@ -58,6 +70,8 @@ func main() {
 
 	runtime.GC()
 	log.Println("GC has been finished")
+
+	initPool()
 
 	if err := fasthttp.ListenAndServe(addr, requestHandler); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
