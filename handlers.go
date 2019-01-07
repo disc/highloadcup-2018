@@ -424,7 +424,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				break
 			}
 			passedFilters := 0
-			account := *it.Value().(*Account)
+			account := it.Value().(*Account)
 			if sexEqFilter != "" {
 				if account.Sex == sexEqFilter {
 					passedFilters += 1
@@ -689,7 +689,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if passedFilters == filtersCount {
-				foundAccounts = append(foundAccounts, &account)
+				foundAccounts = append(foundAccounts, account)
 			}
 		}
 	}

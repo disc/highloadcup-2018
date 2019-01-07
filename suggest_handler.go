@@ -91,7 +91,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 				break
 			}
 			passedFilters := 0
-			account := *it.Value().(*Account)
+			account := it.Value().(*Account)
 
 			if countryEqFilter != "" {
 				if account.Country == countryEqFilter {
