@@ -707,12 +707,15 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 	results.AppendString(`{"accounts":[`)
 
 	keysLen := len(responseProperties)
+	foundLen := len(found)
 
-	for _, account := range found {
+	for accIdx, account := range found {
+		lastAcc := accIdx == foundLen-1
+		_ = lastAcc
 		result := buffer.Buffer{}
-		for idx, key := range responseProperties {
-			first := idx == 0
-			last := idx == keysLen-1
+		for keyIdx, key := range responseProperties {
+			first := keyIdx == 0
+			last := keyIdx == keysLen-1
 			_ = first
 			_ = last
 
@@ -754,15 +757,25 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 			case "birth":
 				result.AppendString(`,"birth":`)
 				result.Buf = strconv.AppendInt(result.Buf, int64(account.Birth), 10)
-				//	result[key] = account.Birth
-				//case "premium":
-				//	result[key] = account.Premium
+			case "premium":
+				if account.Premium == nil {
+					result.AppendString(`,"premium":null`)
+				} else {
+					result.AppendString(`,"premium":{"start":`)
+					result.Buf = strconv.AppendInt(result.Buf, int64(account.Premium["start"]), 10)
+					result.AppendString(`,"finish":`)
+					result.Buf = strconv.AppendInt(result.Buf, int64(account.Premium["finish"]), 10)
+					result.AppendString(`}`)
+				}
 			}
 		}
 
 		results.AppendString("{")
 		results.AppendBytes(result.BuildBytes()[1:])
 		results.AppendString("}")
+		if !lastAcc {
+			results.AppendString(",")
+		}
 	}
 
 	results.AppendString("]}")

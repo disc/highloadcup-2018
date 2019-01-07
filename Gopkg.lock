@@ -91,6 +91,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:079bd1108a70f5f52ad69e39d3790acbe97fd11f615f7f818866b3ec8744c636"
+  name = "github.com/mailru/easyjson"
+  packages = ["buffer"]
+  pruneopts = "UT"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
+
+[[projects]]
+  branch = "master"
   digest = "1:4f4fd75cbdd5ad0696f4d762328f094b9c86061323c9a9f8d0de157f06197e89"
   name = "github.com/mkevac/debugcharts"
   packages = [
@@ -171,6 +179,7 @@
     "github.com/emirpasic/gods/maps/treemap",
     "github.com/emirpasic/gods/utils",
     "github.com/gorilla/handlers",
+    "github.com/mailru/easyjson/buffer",
     "github.com/mkevac/debugcharts",
     "github.com/valyala/fasthttp",
   ]
