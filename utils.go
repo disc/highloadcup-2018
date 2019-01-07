@@ -1,6 +1,10 @@
 package main
 
 func filterContains(needle map[string]struct{}, haystack map[string]struct{}) bool {
+	if len(haystack) == 0 || len(haystack) < len(needle) {
+		return false
+	}
+
 	suitable := true
 	for v := range needle {
 		if _, ok := haystack[v]; !ok {
