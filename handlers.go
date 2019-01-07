@@ -687,7 +687,6 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	jsonData := []byte(`{"accounts":[]}`)
 	if len(foundAccounts) > 0 {
-		//jsonData, _ = json.Marshal(prepareResponse(foundAccounts, responseProperties))
 		jsonData = prepareResponse(foundAccounts, responseProperties)
 	}
 
@@ -710,60 +709,64 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 	for accIdx, account := range found {
 		lastAcc := accIdx == foundLen-1
 		_ = lastAcc
-		var result bytes.Buffer
 		for keyIdx, key := range responseProperties {
-			first := keyIdx == 0
-			last := keyIdx == keysLen-1
-			_ = first
-			_ = last
+			firstKey := keyIdx == 0
+			lastKey := keyIdx == keysLen-1
+
+			if firstKey {
+				results.WriteString("{")
+			}
 
 			switch key {
 			case "id":
-				result.WriteString(`,"id":`)
-				result.Write([]byte(strconv.Itoa(account.ID)))
+				results.WriteString(`"id":`)
+				results.Write([]byte(strconv.Itoa(account.ID)))
 			case "sex":
-				result.WriteString(`,"sex":`)
-				result.WriteString(`"` + account.Sex + `"`)
+				results.WriteString(`"sex":`)
+				results.WriteString(`"` + account.Sex + `"`)
 			case "email":
-				result.WriteString(`,"email":`)
-				result.WriteString(`"` + account.Email + `"`)
+				results.WriteString(`"email":`)
+				results.WriteString(`"` + account.Email + `"`)
 			case "status":
-				result.WriteString(`,"status":`)
-				result.WriteString(`"` + account.Status + `"`)
+				results.WriteString(`"status":`)
+				results.WriteString(`"` + account.Status + `"`)
 			case "fname":
-				result.WriteString(`,"fname":`)
-				result.WriteString(`"` + account.Fname + `"`)
+				results.WriteString(`"fname":`)
+				results.WriteString(`"` + account.Fname + `"`)
 			case "sname":
-				result.WriteString(`,"sname":`)
-				result.WriteString(`"` + account.Sname + `"`)
+				results.WriteString(`"sname":`)
+				results.WriteString(`"` + account.Sname + `"`)
 			case "phone":
-				result.WriteString(`,"phone":`)
-				result.WriteString(`"` + account.Phone + `"`)
+				results.WriteString(`"phone":`)
+				results.WriteString(`"` + account.Phone + `"`)
 			case "country":
-				result.WriteString(`,"country":`)
-				result.WriteString(`"` + account.Country + `"`)
+				results.WriteString(`"country":`)
+				results.WriteString(`"` + account.Country + `"`)
 			case "city":
-				result.WriteString(`,"city":`)
-				result.WriteString(`"` + account.City + `"`)
+				results.WriteString(`"city":`)
+				results.WriteString(`"` + account.City + `"`)
 			case "birth":
-				result.WriteString(`,"birth":`)
-				result.Write([]byte(strconv.Itoa(account.Birth)))
+				results.WriteString(`"birth":`)
+				results.Write([]byte(strconv.Itoa(account.Birth)))
 			case "premium":
 				if account.Premium == nil {
-					result.WriteString(`,"premium":null`)
+					results.WriteString(`"premium":null`)
 				} else {
-					result.WriteString(`,"premium":{"start":`)
-					result.Write([]byte(strconv.Itoa(account.Premium["start"])))
-					result.WriteString(`,"finish":`)
-					result.Write([]byte(strconv.Itoa(account.Premium["finish"])))
-					result.WriteString(`}`)
+					results.WriteString(`"premium":{"start":`)
+					results.Write([]byte(strconv.Itoa(account.Premium["start"])))
+					results.WriteString(`,"finish":`)
+					results.Write([]byte(strconv.Itoa(account.Premium["finish"])))
+					results.WriteString(`}`)
 				}
+			}
+
+			if lastKey {
+				results.WriteString("}")
+			} else {
+				results.WriteString(",")
 			}
 		}
 
-		results.WriteString("{")
-		results.Write(result.Bytes()[1:])
-		results.WriteString("}")
 		if !lastAcc {
 			results.WriteString(",")
 		}
