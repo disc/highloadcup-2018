@@ -2,9 +2,10 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"strconv"
 	"strings"
+
+	"github.com/mailru/easyjson/buffer"
 
 	"github.com/emirpasic/gods/maps/treemap"
 
@@ -688,7 +689,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	jsonData := []byte(`{"accounts":[]}`)
 	if len(foundAccounts) > 0 {
-		jsonData, _ = json.Marshal(prepareResponse(foundAccounts, responseProperties))
+		//jsonData, _ = json.Marshal(prepareResponse(foundAccounts, responseProperties))
+		jsonData = prepareResponse(foundAccounts, responseProperties)
 	}
 
 	// TODO: Use sjson for updates
@@ -700,40 +702,70 @@ func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
 	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }
 
-func prepareResponse(found []*Account, responseProperties []string) *FilterResponse {
-	var results = make([]AccountResponse, 0)
+func prepareResponse(found []*Account, responseProperties []string) []byte {
+	results := buffer.Buffer{}
+	results.AppendString(`{"accounts":[`)
+
+	keysLen := len(responseProperties)
+
 	for _, account := range found {
-		result := AccountResponse{}
-		for _, key := range responseProperties {
+		result := buffer.Buffer{}
+		for idx, key := range responseProperties {
+			first := idx == 0
+			last := idx == keysLen-1
+			_ = first
+			_ = last
+
 			switch key {
 			case "id":
-				result[key] = account.ID
+				result.AppendString(`,"id":`)
+				result.Buf = strconv.AppendInt(result.Buf, int64(account.ID), 10)
 			case "sex":
-				result[key] = account.Sex
+				result.AppendString(`,"sex":`)
+				result.AppendString(`"` + account.Sex + `"`)
 			case "email":
-				result[key] = account.Email
+				//	result[key] = account.Email
+				result.AppendString(`,"email":`)
+				result.AppendString(`"` + account.Email + `"`)
 			case "status":
-				result[key] = account.Status
+				//	result[key] = account.Status
+				result.AppendString(`,"status":`)
+				result.AppendString(`"` + account.Status + `"`)
 			case "fname":
-				result[key] = account.Fname
+				result.AppendString(`,"fname":`)
+				result.AppendString(`"` + account.Fname + `"`)
+			//	result[key] = account.Fname
 			case "sname":
-				result[key] = account.Sname
+				result.AppendString(`,"sname":`)
+				result.AppendString(`"` + account.Sname + `"`)
+			//	result[key] = account.Sname
 			case "phone":
-				result[key] = account.Phone
+				result.AppendString(`,"phone":`)
+				result.AppendString(`"` + account.Phone + `"`)
+			//	result[key] = account.Phone
 			case "country":
-				result[key] = account.Country
+				result.AppendString(`,"country":`)
+				result.AppendString(`"` + account.Country + `"`)
+			//	result[key] = account.Country
 			case "city":
-				result[key] = account.City
+				result.AppendString(`,"city":`)
+				result.AppendString(`"` + account.City + `"`)
+			//	result[key] = account.City
 			case "birth":
-				result[key] = account.Birth
-			case "premium":
-				result[key] = account.Premium
+				result.AppendString(`,"birth":`)
+				result.Buf = strconv.AppendInt(result.Buf, int64(account.Birth), 10)
+				//	result[key] = account.Birth
+				//case "premium":
+				//	result[key] = account.Premium
 			}
 		}
-		results = append(results, result)
+
+		results.AppendString("{")
+		results.AppendBytes(result.BuildBytes()[1:])
+		results.AppendString("}")
 	}
 
-	return &FilterResponse{
-		Accounts: results,
-	}
+	results.AppendString("]}")
+
+	return results.BuildBytes()
 }

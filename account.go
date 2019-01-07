@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mailru/easyjson/buffer"
+
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
 )
@@ -179,4 +181,178 @@ func calculateSimilarityForUser(account *Account) {
 
 func hashFunc(str string) uint32 {
 	return crc32.Checksum([]byte(str), crc32q)
+}
+
+func accountToJsonBytes(acc Account) []byte {
+	resultBuf := buffer.Buffer{}
+
+	//out.RawByte('{')
+	resultBuf.AppendByte('{')
+
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"id\":"
+		if first {
+			first = false
+			resultBuf.AppendString(prefix[1:])
+		} else {
+			resultBuf.AppendString(prefix)
+		}
+		//out.Int(int(acc.ID))
+		strconv.AppendInt(resultBuf.Buf, int64(acc.ID), 10)
+	}
+	{
+		const prefix string = ",\"email\":"
+		if first {
+			first = false
+			resultBuf.AppendString(prefix[1:])
+		} else {
+			resultBuf.AppendString(prefix)
+		}
+		resultBuf.AppendString("\"" + acc.Email + "\"")
+		//out.String(string(acc.Email))
+	}
+	//{
+	//	const prefix string = ",\"fname\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.Fname))
+	//}
+	//{
+	//	const prefix string = ",\"sname\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.Sname))
+	//}
+	//{
+	//	const prefix string = ",\"phone\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.Phone))
+	//}
+	//{
+	//	const prefix string = ",\"sex\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.Sex))
+	//}
+	//{
+	//	const prefix string = ",\"birth\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.Int(int(acc.Birth))
+	//}
+	//{
+	//	const prefix string = ",\"country\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.Country))
+	//}
+	//{
+	//	const prefix string = ",\"city\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.City))
+	//}
+	//{
+	//	const prefix string = ",\"joined\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.Int(int(acc.Joined))
+	//}
+	//{
+	//	const prefix string = ",\"status\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	out.String(string(acc.Status))
+	//}
+	//{
+	//	const prefix string = ",\"Interests\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	if acc.Interests == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+	//		resultBuf.AppendString("null")
+	//	} else {
+	//		out.RawByte('[')
+	//		for v3, v4 := range acc.Interests {
+	//			if v3 > 0 {
+	//				out.RawByte(',')
+	//			}
+	//			out.String(string(v4))
+	//		}
+	//		out.RawByte(']')
+	//	}
+	//}
+	//{
+	//	const prefix string = ",\"premium\":"
+	//	if first {
+	//		first = false
+	//		resultBuf.AppendString(prefix[1:])
+	//	} else {
+	//		resultBuf.AppendString(prefix)
+	//	}
+	//	if acc.Premium == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
+	//		resultBuf.AppendString(`null`)
+	//	} else {
+	//		out.RawByte('{')
+	//		v5First := true
+	//		for v5Name, v5Value := range acc.Premium {
+	//			if v5First {
+	//				v5First = false
+	//			} else {
+	//				out.RawByte(',')
+	//			}
+	//			out.String(string(v5Name))
+	//			out.RawByte(':')
+	//			out.Int(int(v5Value))
+	//		}
+	//		out.RawByte('}')
+	//	}
+	//}
+
+	//out.RawByte('}')
+	resultBuf.AppendByte('}')
+
+	return resultBuf.BuildBytes()
 }
