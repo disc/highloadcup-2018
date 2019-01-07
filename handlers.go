@@ -599,7 +599,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if len(interestsContainsFilter) > 0 {
 				// FIXME: slow solution
-				if filterContains(account.interestsMap, interestsContainsFilter) {
+				if filterContains(interestsContainsFilter, account.interestsMap) {
 					passedFilters += 1
 				} else {
 					continue
