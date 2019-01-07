@@ -2,7 +2,7 @@ build:
 	docker build -t hlcup .
 run-local: build
 	@docker rm -f $$(docker ps -qa -f name=hlcup) || true
-	docker run --name hlcup --rm -p 8080:80 -v $$(pwd)/data.zip:/tmp/data/data.zip -v $$(pwd)/data/options.txt:/go/src/gitlab.com/disc/hlcup/data/options.txt -t hlcup
+	docker run --name hlcup --rm -p 8080:80 -v $$(pwd)/data.zip:/tmp/data/data.zip -v $$(pwd)/data/options.txt:/go/src/github.com/disc/hlcup/data/options.txt -t hlcup
 deploy: build
 	docker tag hlcup stor.highloadcup.ru/accounts/rebel_butterfly
 	docker push stor.highloadcup.ru/accounts/rebel_butterfly

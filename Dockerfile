@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-WORKDIR /go/src/gitlab.com/disc/hlcup
+WORKDIR /go/src/github.com/disc/hlcup
 
 COPY Gopkg.toml Gopkg.lock ./
 
