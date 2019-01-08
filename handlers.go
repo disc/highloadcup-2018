@@ -44,9 +44,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	// ignore interests, likes
-	responseProperties := []string{
-		"id", "email",
-	}
+	responseProperties := make([]string, 0, 128)
+	responseProperties = append(responseProperties, "id", "email")
 
 	var limit int
 	var err error
