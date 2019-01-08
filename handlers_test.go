@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/valyala/fasthttp"
+)
 
 var accounts = []*Account{
 	{ID: 1, Email: "a1@b.com", Status: "f", Premium: map[string]int{"start": 1, "finish": 2}, Birth: 123},
@@ -21,4 +25,19 @@ func BenchmarkPrepareResponseBytes(b *testing.B) {
 		result = prepareResponseBytes(accounts, keys)
 	}
 	_ = result
+}
+
+func BenchmarkFilterHandler(b *testing.B) {
+	var ctx fasthttp.RequestCtx
+	args := ctx.QueryArgs()
+
+	args.Add("sex_eq", "f")
+	args.Add("interests_any", "YouTube,Бургеры")
+	args.Add("limit", "50")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		filterHandler(&ctx)
+	}
 }

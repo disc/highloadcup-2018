@@ -4,19 +4,16 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/gorilla/handlers"
 	_ "github.com/mkevac/debugcharts"
 
@@ -32,20 +29,6 @@ var (
 	log = logrus.New()
 
 	isDebugMode = os.Getenv("DEBUG")
-
-	crc32q = crc32.MakeTable(0xD5828281)
-
-	pool = &sync.Pool{
-		New: func() interface{} {
-			return treemap.NewWithIntComparator()
-		},
-	}
-
-	bytesPool = &sync.Pool{
-		New: func() interface{} {
-			return make([]byte, 0, 2048)
-		},
-	}
 )
 
 func main() {

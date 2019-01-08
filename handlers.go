@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/emirpasic/gods/maps/treemap"
 
@@ -12,6 +13,22 @@ import (
 
 type FilterResponse struct {
 	Accounts []AccountResponse `json:"accounts,string"`
+}
+
+type NamedIndex struct {
+	name  []byte
+	index *treemap.Map
+}
+
+func (n NamedIndex) New(name []byte, index *treemap.Map) *NamedIndex {
+	return &NamedIndex{name, index}
+}
+
+func (n *NamedIndex) Update(name []byte, index *treemap.Map) *NamedIndex {
+	n.name = name
+	n.index = index
+
+	return n
 }
 
 var allowedParams = map[string]int{
@@ -28,6 +45,24 @@ var allowedParams = map[string]int{
 	"interests_contains": 1, "interests_any": 1,
 	"likes_contains": 1,
 	"premium_now":    1, "premium_null": 1,
+}
+
+var bytesPool = &sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 0, 2048)
+	},
+}
+
+var namedIndexPool = &sync.Pool{
+	New: func() interface{} {
+		return new(NamedIndex)
+	},
+}
+
+var treemapPool = &sync.Pool{
+	New: func() interface{} {
+		return treemap.NewWithIntComparator()
+	},
 }
 
 func filterHandler(ctx *fasthttp.RequestCtx) {
@@ -305,6 +340,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	var interestsAnyFilter map[string]struct{}
 	var interestsContainsFilter map[string]struct{}
 	if len(interestsAnyF) > 0 {
+		// 2 allocs costs
 		words := strings.Split(string(interestsAnyF), ",")
 		if len(words) > 0 {
 			interestsAnyFilter = map[string]struct{}{}
@@ -337,20 +373,18 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	var index *treemap.Map
 
-	type namedIndex struct {
-		name  string
-		index *treemap.Map
-	}
+	vnidxpool := namedIndexPool.Get()
+	namedIndex := vnidxpool.(*NamedIndex)
 
-	suitableIndexes := pool.Get().(*treemap.Map)
-	suitableIndexes.Clear()
-	suitableIndexes.Put(accountMap.Size(), &namedIndex{"default", accountMap})
+	vmap := treemapPool.Get()
+	suitableIndexes := vmap.(*treemap.Map)
+	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
 
 	if countryEqFilter != "" {
 		if countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				countryMap[countryEqFilter].Size(),
-				&namedIndex{"country", countryMap[countryEqFilter]},
+				namedIndex.Update([]byte("country"), countryMap[countryEqFilter]),
 			)
 		} else {
 			// todo: return empty json
@@ -363,7 +397,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				cityMap[cityEqFilter].Size(),
-				&namedIndex{"city", cityMap[cityEqFilter]},
+				namedIndex.Update([]byte("city"), cityMap[cityEqFilter]),
 			)
 		} else {
 			// todo: return empty json
@@ -376,7 +410,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if birthYearMap[birthYearFilter] != nil && birthYearMap[birthYearFilter].Size() > 0 {
 			suitableIndexes.Put(
 				birthYearMap[birthYearFilter].Size(),
-				&namedIndex{"birth_year", birthYearMap[birthYearFilter]},
+				namedIndex.Update([]byte("birth_year"), birthYearMap[birthYearFilter]),
 			)
 		} else {
 			// todo: return empty json
@@ -389,7 +423,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if snameMap[snameEqFilter] != nil && snameMap[snameEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				snameMap[snameEqFilter].Size(),
-				&namedIndex{"sname", snameMap[snameEqFilter]},
+				namedIndex.Update([]byte("sname"), snameMap[snameEqFilter]),
 			)
 		} else {
 			// todo: return empty json
@@ -402,7 +436,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if fnameMap[fnameEqFilter] != nil && fnameMap[fnameEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				fnameMap[fnameEqFilter].Size(),
-				&namedIndex{"fname", fnameMap[fnameEqFilter]},
+				namedIndex.Update([]byte("fname"), fnameMap[fnameEqFilter]),
 			)
 		} else {
 			// todo: return empty json
@@ -411,16 +445,17 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	var selectedIndexName string
+	var selectedIndexName []byte
 	if suitableIndexes.Size() > 0 {
 		if _, shortestIndex := suitableIndexes.Min(); &shortestIndex != nil {
-			res := shortestIndex.(*namedIndex)
+			res := shortestIndex.(*NamedIndex)
 			selectedIndexName = res.name
 			index = res.index
 		}
 	}
 
-	pool.Put(suitableIndexes)
+	namedIndexPool.Put(vnidxpool)
+	treemapPool.Put(vmap)
 
 	filtersCount := len(filters)
 
@@ -455,7 +490,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if fnameEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "fname" || account.Fname == fnameEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("fname")) || account.Fname == fnameEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -487,7 +522,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if snameEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "sname" || account.Sname == snameEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("sname")) || account.Sname == snameEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -537,7 +572,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if countryEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "country" || account.Country == countryEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("country")) || account.Country == countryEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -559,7 +594,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if cityEqFilter != "" {
 				// use const for index name
-				if selectedIndexName == "city" || account.City == cityEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("city")) || account.City == cityEqFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -642,7 +677,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if birthYearFilter > 0 {
 				// use const for index name
-				if selectedIndexName == "birth_year" || account.birthYear == birthYearFilter {
+				if bytes.Equal(selectedIndexName, []byte("birth_year")) || account.birthYear == birthYearFilter {
 					passedFilters += 1
 				} else {
 					continue

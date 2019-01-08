@@ -1,7 +1,6 @@
 package main
 
 import (
-	"hash/crc32"
 	"strconv"
 	"strings"
 	"time"
@@ -175,8 +174,4 @@ func calculateSimilarityForUser(account *Account) {
 	//		}
 	//	}
 	//}
-}
-
-func hashFunc(str string) uint32 {
-	return crc32.Checksum([]byte(str), crc32q)
 }
