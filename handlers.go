@@ -345,13 +345,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	suitableIndexes := pool.Get().(*treemap.Map)
 	suitableIndexes.Clear()
-	suitableIndexes.Put(accountMap.Size(), namedIndex{"default", accountMap})
+	suitableIndexes.Put(accountMap.Size(), &namedIndex{"default", accountMap})
 
 	if countryEqFilter != "" {
 		if countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				countryMap[countryEqFilter].Size(),
-				namedIndex{"country", countryMap[countryEqFilter]},
+				&namedIndex{"country", countryMap[countryEqFilter]},
 			)
 		} else {
 			// todo: return empty json
@@ -364,7 +364,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				cityMap[cityEqFilter].Size(),
-				namedIndex{"city", cityMap[cityEqFilter]},
+				&namedIndex{"city", cityMap[cityEqFilter]},
 			)
 		} else {
 			// todo: return empty json
@@ -377,7 +377,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if birthYearMap[birthYearFilter] != nil && birthYearMap[birthYearFilter].Size() > 0 {
 			suitableIndexes.Put(
 				birthYearMap[birthYearFilter].Size(),
-				namedIndex{"birth_year", birthYearMap[birthYearFilter]},
+				&namedIndex{"birth_year", birthYearMap[birthYearFilter]},
 			)
 		} else {
 			// todo: return empty json
@@ -390,7 +390,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if snameMap[snameEqFilter] != nil && snameMap[snameEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				snameMap[snameEqFilter].Size(),
-				namedIndex{"sname", snameMap[snameEqFilter]},
+				&namedIndex{"sname", snameMap[snameEqFilter]},
 			)
 		} else {
 			// todo: return empty json
@@ -403,7 +403,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if fnameMap[fnameEqFilter] != nil && fnameMap[fnameEqFilter].Size() > 0 {
 			suitableIndexes.Put(
 				fnameMap[fnameEqFilter].Size(),
-				namedIndex{"fname", fnameMap[fnameEqFilter]},
+				&namedIndex{"fname", fnameMap[fnameEqFilter]},
 			)
 		} else {
 			// todo: return empty json
@@ -415,11 +415,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	var selectedIndexName string
 	if suitableIndexes.Size() > 0 {
 		if _, shortestIndex := suitableIndexes.Min(); &shortestIndex != nil {
-			res := shortestIndex.(namedIndex)
+			res := shortestIndex.(*namedIndex)
 			selectedIndexName = res.name
 			index = res.index
 		}
 	}
+
+	pool.Put(suitableIndexes)
 
 	filtersCount := len(filters)
 
@@ -688,10 +690,8 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	jsonData := []byte(`{"accounts":[]}`)
 	if len(foundAccounts) > 0 {
-		jsonData = prepareResponse(foundAccounts, responseProperties)
+		jsonData = prepareResponseBytes(foundAccounts, responseProperties)
 	}
-
-	pool.Put(suitableIndexes)
 
 	// TODO: Use sjson for updates
 	ctx.Success("application/json", jsonData)
@@ -702,9 +702,10 @@ func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
 	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }
 
-func prepareResponse(found []*Account, responseProperties []string) []byte {
-	var results bytes.Buffer
-	results.WriteString(`{"accounts":[`)
+func prepareResponseBuffer(found []*Account, responseProperties []string) []byte {
+	var bytesBuffer bytes.Buffer
+
+	bytesBuffer.WriteString(`{"accounts":[`)
 
 	keysLen := len(responseProperties)
 	foundLen := len(found)
@@ -715,67 +716,134 @@ func prepareResponse(found []*Account, responseProperties []string) []byte {
 		for keyIdx, key := range responseProperties {
 			firstKey := keyIdx == 0
 			lastKey := keyIdx == keysLen-1
+			_ = firstKey
 
 			if firstKey {
-				results.WriteString("{")
+				bytesBuffer.WriteString(`{`)
 			}
 
 			switch key {
 			case "id":
-				results.WriteString(`"id":`)
-				results.Write(fasthttp.AppendUint(nil, account.ID))
+				bytesBuffer.WriteString(`"id":`)
+				bytesBuffer.Write(fasthttp.AppendUint(nil, account.ID))
 			case "sex":
-				results.WriteString(`"sex":`)
-				results.WriteString(`"` + account.Sex + `"`)
+				bytesBuffer.WriteString(`"sex":"` + account.Sex + `"`)
 			case "email":
-				results.WriteString(`"email":`)
-				results.WriteString(`"` + account.Email + `"`)
+				bytesBuffer.WriteString(`"email":"` + account.Email + `"`)
 			case "status":
-				results.WriteString(`"status":`)
-				results.WriteString(`"` + account.Status + `"`)
+				bytesBuffer.WriteString(`"status":"` + account.Status + `"`)
 			case "fname":
-				results.WriteString(`"fname":`)
-				results.WriteString(`"` + account.Fname + `"`)
+				bytesBuffer.WriteString(`"fname":"` + account.Fname + `"`)
 			case "sname":
-				results.WriteString(`"sname":`)
-				results.WriteString(`"` + account.Sname + `"`)
+				bytesBuffer.WriteString(`"sname":"` + account.Sname + `"`)
 			case "phone":
-				results.WriteString(`"phone":`)
-				results.WriteString(`"` + account.Phone + `"`)
+				bytesBuffer.WriteString(`"phone":"` + account.Phone + `"`)
 			case "country":
-				results.WriteString(`"country":`)
-				results.WriteString(`"` + account.Country + `"`)
+				bytesBuffer.WriteString(`"country":"` + account.Country + `"`)
 			case "city":
-				results.WriteString(`"city":`)
-				results.WriteString(`"` + account.City + `"`)
+				bytesBuffer.WriteString(`"city":"` + account.City + `"`)
 			case "birth":
-				results.WriteString(`"birth":`)
-				results.Write([]byte(strconv.Itoa(account.Birth)))
+				bytesBuffer.WriteString(`"birth":"`)
+				bytesBuffer.Write(fasthttp.AppendUint(nil, account.Birth))
+				bytesBuffer.WriteString(`"`)
 			case "premium":
 				if account.Premium == nil {
-					results.WriteString(`"premium":null`)
+					bytesBuffer.WriteString(`"premium":null`)
 				} else {
-					results.WriteString(`"premium":{"start":`)
-					results.Write([]byte(strconv.Itoa(account.Premium["start"])))
-					results.WriteString(`,"finish":`)
-					results.Write([]byte(strconv.Itoa(account.Premium["finish"])))
-					results.WriteString(`}`)
+					bytesBuffer.WriteString(`"premium":{"start":`)
+					bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["start"]))
+					bytesBuffer.WriteString(`,"finish":`)
+					bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["finish"]))
+					bytesBuffer.WriteString(`}`)
 				}
 			}
 
 			if lastKey {
-				results.WriteString("}")
+				bytesBuffer.WriteString(`}`)
 			} else {
-				results.WriteString(",")
+				bytesBuffer.WriteString(`,`)
 			}
 		}
 
 		if !lastAcc {
-			results.WriteString(",")
+			bytesBuffer.WriteString(`,`)
 		}
 	}
 
-	results.WriteString("]}")
+	bytesBuffer.WriteString(`]}`)
 
-	return results.Bytes()
+	return bytesBuffer.Bytes()
+}
+
+func prepareResponseBytes(found []*Account, responseProperties []string) []byte {
+	var bytesBuffer []byte
+
+	bytesBuffer = append(bytesBuffer, `{"accounts":[`...)
+
+	keysLen := len(responseProperties)
+	foundLen := len(found)
+
+	for accIdx, account := range found {
+		lastAcc := accIdx == foundLen-1
+		_ = lastAcc
+		for keyIdx, key := range responseProperties {
+			firstKey := keyIdx == 0
+			lastKey := keyIdx == keysLen-1
+			_ = lastKey
+			_ = firstKey
+
+			if firstKey {
+				bytesBuffer = append(bytesBuffer, `{`...)
+			}
+
+			switch key {
+			case "id":
+				bytesBuffer = append(bytesBuffer, `"id":`...)
+				bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.ID)
+			case "sex":
+				bytesBuffer = append(bytesBuffer, `"sex":"`+account.Sex+`"`...)
+			case "email":
+				bytesBuffer = append(bytesBuffer, `"email":"`+account.Email+`"`...)
+			case "status":
+				bytesBuffer = append(bytesBuffer, `"status":"`+account.Status+`"`...)
+			case "fname":
+				bytesBuffer = append(bytesBuffer, `"fname":"`+account.Fname+`"`...)
+			case "sname":
+				bytesBuffer = append(bytesBuffer, `"sname":"`+account.Sname+`"`...)
+			case "phone":
+				bytesBuffer = append(bytesBuffer, `"phone":"`+account.Phone+`"`...)
+			case "country":
+				bytesBuffer = append(bytesBuffer, `"country":"`+account.Country+`"`...)
+			case "city":
+				bytesBuffer = append(bytesBuffer, `"city":"`+account.City+`"`...)
+			case "birth":
+				bytesBuffer = append(bytesBuffer, `"birth":`...)
+				bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.Birth)
+			case "premium":
+				if account.Premium == nil {
+					bytesBuffer = append(bytesBuffer, `"premium":null`...)
+				} else {
+					bytesBuffer = append(bytesBuffer, `"premium":{"start":`...)
+					bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.Premium["start"])
+					bytesBuffer = append(bytesBuffer, `,"finish":`...)
+					bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.Premium["finish"])
+					bytesBuffer = append(bytesBuffer, `}`...)
+				}
+			}
+
+			if lastKey {
+				bytesBuffer = append(bytesBuffer, `}`...)
+			} else {
+				bytesBuffer = append(bytesBuffer, `,`...)
+			}
+		}
+
+		if !lastAcc {
+			bytesBuffer = append(bytesBuffer, `,`...)
+		}
+	}
+
+	bytesBuffer = append(bytesBuffer, `]}`...)
+
+	return bytesBuffer
 }
