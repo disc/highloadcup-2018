@@ -776,7 +776,7 @@ func prepareResponseBuffer(found []*Account, responseProperties []string) []byte
 }
 
 func prepareResponseBytes(found []*Account, responseProperties []string) []byte {
-	var bytesBuffer []byte
+	bytesBuffer := make([]byte, 0, len(found)*128)
 
 	bytesBuffer = append(bytesBuffer, `{"accounts":[`...)
 
