@@ -35,16 +35,18 @@ var (
 
 	crc32q = crc32.MakeTable(0xD5828281)
 
-	pool *sync.Pool
-)
-
-func initPool() {
 	pool = &sync.Pool{
 		New: func() interface{} {
 			return treemap.NewWithIntComparator()
 		},
 	}
-}
+
+	bytesPool = &sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 0, 2048)
+		},
+	}
+)
 
 func main() {
 	if isDebugMode != "" {
@@ -70,8 +72,6 @@ func main() {
 
 	runtime.GC()
 	log.Println("GC has been finished")
-
-	initPool()
 
 	if err := fasthttp.ListenAndServe(addr, requestHandler); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)

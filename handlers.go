@@ -701,81 +701,9 @@ func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
 	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }
 
-func prepareResponseBuffer(found []*Account, responseProperties []string) []byte {
-	var bytesBuffer bytes.Buffer
-
-	bytesBuffer.WriteString(`{"accounts":[`)
-
-	keysLen := len(responseProperties)
-	foundLen := len(found)
-
-	for accIdx, account := range found {
-		lastAcc := accIdx == foundLen-1
-		_ = lastAcc
-		for keyIdx, key := range responseProperties {
-			firstKey := keyIdx == 0
-			lastKey := keyIdx == keysLen-1
-			_ = firstKey
-
-			if firstKey {
-				bytesBuffer.WriteString(`{`)
-			}
-
-			switch key {
-			case "id":
-				bytesBuffer.WriteString(`"id":`)
-				bytesBuffer.Write(fasthttp.AppendUint(nil, account.ID))
-			case "sex":
-				bytesBuffer.WriteString(`"sex":"` + account.Sex + `"`)
-			case "email":
-				bytesBuffer.WriteString(`"email":"` + account.Email + `"`)
-			case "status":
-				bytesBuffer.WriteString(`"status":"` + account.Status + `"`)
-			case "fname":
-				bytesBuffer.WriteString(`"fname":"` + account.Fname + `"`)
-			case "sname":
-				bytesBuffer.WriteString(`"sname":"` + account.Sname + `"`)
-			case "phone":
-				bytesBuffer.WriteString(`"phone":"` + account.Phone + `"`)
-			case "country":
-				bytesBuffer.WriteString(`"country":"` + account.Country + `"`)
-			case "city":
-				bytesBuffer.WriteString(`"city":"` + account.City + `"`)
-			case "birth":
-				bytesBuffer.WriteString(`"birth":"`)
-				bytesBuffer.Write(fasthttp.AppendUint(nil, account.Birth))
-				bytesBuffer.WriteString(`"`)
-			case "premium":
-				if account.Premium == nil {
-					bytesBuffer.WriteString(`"premium":null`)
-				} else {
-					bytesBuffer.WriteString(`"premium":{"start":`)
-					bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["start"]))
-					bytesBuffer.WriteString(`,"finish":`)
-					bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["finish"]))
-					bytesBuffer.WriteString(`}`)
-				}
-			}
-
-			if lastKey {
-				bytesBuffer.WriteString(`}`)
-			} else {
-				bytesBuffer.WriteString(`,`)
-			}
-		}
-
-		if !lastAcc {
-			bytesBuffer.WriteString(`,`)
-		}
-	}
-
-	bytesBuffer.WriteString(`]}`)
-
-	return bytesBuffer.Bytes()
-}
-
 func prepareResponseBytes(found []*Account, responseProperties []string) []byte {
-	bytesBuffer := make([]byte, 0, len(found)*128)
+	vbuf := bytesPool.Get()
+	bytesBuffer := vbuf.([]byte)
 
 	bytesBuffer = append(bytesBuffer, `{"accounts":[`...)
 
@@ -843,6 +771,8 @@ func prepareResponseBytes(found []*Account, responseProperties []string) []byte 
 	}
 
 	bytesBuffer = append(bytesBuffer, `]}`...)
+
+	bytesPool.Put(vbuf)
 
 	return bytesBuffer
 }

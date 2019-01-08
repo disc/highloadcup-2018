@@ -12,18 +12,11 @@ var accounts = []*Account{
 
 var keys = []string{"id", "email", "status", "premium", "birth"}
 
-func BenchmarkPrepareResponseBuffer(b *testing.B) {
-	var result []byte
-
-	for n := 0; n < b.N; n++ {
-		result = prepareResponseBuffer(accounts, keys)
-	}
-	_ = result
-}
-
 func BenchmarkPrepareResponseBytes(b *testing.B) {
 	var result []byte
 
+	b.ReportAllocs()
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		result = prepareResponseBytes(accounts, keys)
 	}
