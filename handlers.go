@@ -688,13 +688,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	jsonData := []byte(`{"accounts":[]}`)
 	if len(foundAccounts) > 0 {
-		jsonData = prepareResponseBytes(foundAccounts, responseProperties)
+		ctx.Success("application/json", prepareResponseBytes(foundAccounts, responseProperties))
+		return
 	}
 
-	// TODO: Use sjson for updates
-	ctx.Success("application/json", jsonData)
+	ctx.Success("application/json", []byte(`{"accounts":[]}`))
+
 	return
 }
 
