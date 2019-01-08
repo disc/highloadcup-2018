@@ -36,6 +36,12 @@ var (
 	crc32q = crc32.MakeTable(0xD5828281)
 
 	pool *sync.Pool
+
+	bytesBufferPool = sync.Pool{
+		New: func() interface{} {
+			return new(bytes.Buffer)
+		},
+	}
 )
 
 func initPool() {

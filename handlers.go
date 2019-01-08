@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"strconv"
 	"strings"
 
@@ -688,7 +689,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	if len(foundAccounts) > 0 {
-		ctx.Success("application/json", prepareResponseBytes(foundAccounts, responseProperties))
+		ctx.Success("application/json", prepareResponseBuffer(foundAccounts, responseProperties))
 		return
 	}
 
@@ -702,7 +703,7 @@ func emptyFilterResponse(ctx *fasthttp.RequestCtx) {
 }
 
 func prepareResponseBuffer(found []*Account, responseProperties []string) []byte {
-	var bytesBuffer bytes.Buffer
+	bytesBuffer := bytesBufferPool.Get().(*bytes.Buffer)
 
 	bytesBuffer.WriteString(`{"accounts":[`)
 
@@ -724,7 +725,11 @@ func prepareResponseBuffer(found []*Account, responseProperties []string) []byte
 			switch key {
 			case "id":
 				bytesBuffer.WriteString(`"id":`)
-				bytesBuffer.Write(fasthttp.AppendUint(nil, account.ID))
+
+				bs := make([]byte, 4)
+				binary.LittleEndian.PutUint32(bs, uint32(int32(account.ID)))
+				bytesBuffer.Write(bs)
+				//bytesBuffer.Write(fasthttp.AppendUint(bytesBuffer, account.ID))
 			case "sex":
 				bytesBuffer.WriteString(`"sex":"` + account.Sex + `"`)
 			case "email":
@@ -743,16 +748,16 @@ func prepareResponseBuffer(found []*Account, responseProperties []string) []byte
 				bytesBuffer.WriteString(`"city":"` + account.City + `"`)
 			case "birth":
 				bytesBuffer.WriteString(`"birth":"`)
-				bytesBuffer.Write(fasthttp.AppendUint(nil, account.Birth))
+				//bytesBuffer.Write(fasthttp.AppendUint(nil, account.Birth))
 				bytesBuffer.WriteString(`"`)
 			case "premium":
 				if account.Premium == nil {
 					bytesBuffer.WriteString(`"premium":null`)
 				} else {
 					bytesBuffer.WriteString(`"premium":{"start":`)
-					bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["start"]))
+					//bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["start"]))
 					bytesBuffer.WriteString(`,"finish":`)
-					bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["finish"]))
+					//bytesBuffer.Write(fasthttp.AppendUint(nil, account.Premium["finish"]))
 					bytesBuffer.WriteString(`}`)
 				}
 			}
@@ -771,7 +776,15 @@ func prepareResponseBuffer(found []*Account, responseProperties []string) []byte
 
 	bytesBuffer.WriteString(`]}`)
 
-	return bytesBuffer.Bytes()
+	//result := make([]byte, bytesBuffer.Len())
+	//copy(result, bytesBuffer.Bytes())
+
+	result := bytesBuffer.Bytes()
+
+	bytesBuffer.Reset()
+	bytesBufferPool.Put(bytesBuffer)
+
+	return result
 }
 
 func prepareResponseBytes(found []*Account, responseProperties []string) []byte {
