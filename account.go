@@ -13,13 +13,11 @@ import (
 	"github.com/emirpasic/gods/utils"
 )
 
-type AccountResponse map[string]interface{}
-
 var (
 	inverseIntComparator = func(a, b interface{}) int {
 		return -utils.IntComparator(a, b)
 	}
-	inverseFloat64Comparator = func(a, b interface{}) int {
+	inverseFloat32Comparator = func(a, b interface{}) int {
 		return -utils.Float32Comparator(a, b)
 	}
 	accountMap         = treemap.NewWith(inverseIntComparator)
@@ -28,7 +26,6 @@ var (
 	birthYearMap       = map[int]*treemap.Map{}
 	fnameMap           = map[string]*treemap.Map{}
 	snameMap           = map[string]*treemap.Map{}
-	similarityMap      = map[int]*treemap.Map{}
 	globalInterestsMap = map[string]*treemap.Map{}
 	likeeIndex         = map[int]*treemap.Map{} // who liked this user
 )
@@ -55,6 +52,10 @@ type Account struct {
 	birthYear     int
 	premiumFinish int64
 	likes         map[int]LikesList
+}
+
+func (acc Account) hasActivePremium(now int64) bool {
+	return acc.premiumFinish >= now
 }
 
 type LikesList []int
@@ -166,7 +167,7 @@ func calculateSimilarityForUser(account *Account) *treemap.Map {
 	if len(user1Likes) == 0 {
 		return nil
 	}
-	userSimilarityMap := treemap.NewWith(inverseFloat64Comparator)
+	userSimilarityMap := treemap.NewWith(inverseFloat32Comparator)
 	for likeId, tsList := range user1Likes {
 		ts1 := tsList.getTimestamp()
 		it := likeeIndex[likeId].Iterator()

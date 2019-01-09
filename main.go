@@ -24,7 +24,7 @@ import (
 var (
 	addr = ":80"
 
-	now = time.Now().Unix()
+	now = int64(time.Now().Unix())
 
 	log = logrus.New()
 
@@ -94,10 +94,9 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 			suggestHandler(ctx, parseAccountId(path))
 			return
 		}
-		if pathLen > 23 && path[23] == 'd' {
+		if pathLen > 23 && pathLen <= 31 && path[pathLen-2] == 'd' {
 			// recommend
-			//FIXME
-			ctx.Success("application/json", []byte("{\"accounts\":[]}"))
+			recommendHandler(ctx, parseAccountId(path))
 			return
 		}
 		// 404

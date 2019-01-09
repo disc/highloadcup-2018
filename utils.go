@@ -31,3 +31,18 @@ func filterAny(a map[string]struct{}, b map[string]struct{}) bool {
 
 	return false
 }
+
+func intersectionsCount(needle map[string]struct{}, haystack map[string]struct{}) int {
+	if len(haystack) == 0 || len(haystack) < len(needle) {
+		return 0
+	}
+
+	intersections := 0
+	for v := range needle {
+		if _, ok := haystack[v]; ok {
+			intersections++
+		}
+	}
+
+	return intersections
+}
