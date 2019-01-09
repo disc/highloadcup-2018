@@ -452,8 +452,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			if shortInterestsIndex == nil {
 				shortInterestsIndex = globalInterestsMap[interest]
 				continue
-			}
-			if shortInterestsIndex.Size() < globalInterestsMap[interest].Size() {
+			} else if shortInterestsIndex.Size() < globalInterestsMap[interest].Size() {
 				shortInterestsIndex = globalInterestsMap[interest]
 			}
 		}
@@ -473,8 +472,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			if shortInterestsIndex == nil {
 				shortInterestsIndex = likeeIndex[like]
 				continue
-			}
-			if shortInterestsIndex.Size() < likeeIndex[like].Size() {
+			} else if shortInterestsIndex != nil && shortInterestsIndex.Size() < likeeIndex[like].Size() {
 				shortInterestsIndex = likeeIndex[like]
 			}
 		}
