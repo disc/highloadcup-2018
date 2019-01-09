@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
@@ -27,34 +30,36 @@ var (
 	similarityMap      = map[int]*treemap.Map{}
 	globalInterestsMap = map[string]*treemap.Map{}
 	globalLikesMap     = map[*Account][]*Account{}
+	likersIndex        = map[int]*treemap.Map{} // likes by user
+	likeeIndex         = map[int]*treemap.Map{} // who liked this user
 )
 
 type Account struct {
-	ID        int            `json:"id"`
-	Email     string         `json:"email"`
-	Fname     string         `json:"fname"`
-	Sname     string         `json:"sname"`
-	Phone     string         `json:"phone"`
-	Sex       string         `json:"sex"`
-	Birth     int            `json:"birth"`
-	Country   string         `json:"country"`
-	City      string         `json:"city"`
-	Joined    int            `json:"joined"`
-	Status    string         `json:"status"`
-	Interests []string       // temp data
-	Premium   map[string]int `json:"premium"`
-	//TempLikes []map[string]int `json:"likes"` // temp data
+	ID        int             `json:"id"`
+	Email     string          `json:"email"`
+	Fname     string          `json:"fname"`
+	Sname     string          `json:"sname"`
+	Phone     string          `json:"phone"`
+	Sex       string          `json:"sex"`
+	Birth     int             `json:"birth"`
+	Country   string          `json:"country"`
+	City      string          `json:"city"`
+	Joined    int             `json:"joined"`
+	Status    string          `json:"status"`
+	Interests []string        // temp data, cleared when user parsed
+	Premium   map[string]int  `json:"premium"`
+	TempLikes json.RawMessage `json:"likes"` // temp data, cleared when user parsed
 
 	interestsMap  map[string]struct{} // try map[string]struct{}{}
 	emailDomain   string
 	phoneCode     int
 	birthYear     int
 	premiumFinish int64
-	uniqLikes     map[int]int
+	likes         map[int][]int
 }
 
 func createAccount(acc Account) {
-	// TODO: unset uniqLikes, interests
+	// TODO: unset likes, interests
 
 	if len(acc.Interests) > 0 {
 		acc.interestsMap = make(map[string]struct{})
@@ -90,6 +95,23 @@ func createAccount(acc Account) {
 		acc.premiumFinish = int64(finish)
 	}
 
+	if len(acc.TempLikes) > 0 {
+		acc.likes = make(map[int][]int, 0)
+		gjson.ParseBytes(acc.TempLikes).ForEach(func(key, value gjson.Result) bool {
+			like := value.Map()
+			likeId := int(like["id"].Int())
+
+			acc.likes[likeId] = append(acc.likes[likeId], int(like["ts"].Int()))
+
+			if _, ok := likeeIndex[likeId]; !ok {
+				likeeIndex[likeId] = treemap.NewWith(inverseIntComparator)
+			}
+			likeeIndex[likeId].Put(acc.ID, &acc)
+			return true
+		})
+		acc.TempLikes = nil
+	}
+
 	//if len(acc.TempLikes) > 0 {
 	//	likesMap := make(map[int][]int, 0)
 	//	for _, like := range acc.TempLikes {
@@ -113,7 +135,7 @@ func createAccount(acc Account) {
 	//		}
 	//		uniqLikeMap[id] = ts
 	//	}
-	//	//acc.uniqLikes = uniqLikeMap
+	//	//acc.likes = uniqLikeMap
 	//}
 
 	if acc.Country != "" {
@@ -160,10 +182,10 @@ func calculateSimilarityIndex() {
 }
 
 func calculateSimilarityForUser(account *Account) {
-	//user1Likes := account.uniqLikes
+	//user1Likes := account.likes
 	//for likeId, ts1 := range user1Likes {
 	//	for _, acc2 := range globalLikesMap[likeId] {
-	//		ts2 := acc2.uniqLikes[likeId]
+	//		ts2 := acc2.likes[likeId]
 	//		var similarity float64
 	//		if ts1 == ts2 {
 	//			similarity += 1

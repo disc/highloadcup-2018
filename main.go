@@ -71,7 +71,7 @@ GET:
 POST:
 /accounts/new/
 /accounts/<id>/
-/accounts/uniqLikes/
+/accounts/likes/
 */
 
 func requestHandler(ctx *fasthttp.RequestCtx) {

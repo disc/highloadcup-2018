@@ -466,6 +466,27 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
+	if len(likesContainsFilter) > 0 {
+		// get shortest index
+		var shortInterestsIndex *treemap.Map
+		for _, like := range likesContainsFilter {
+			if shortInterestsIndex == nil {
+				shortInterestsIndex = likeeIndex[like]
+				continue
+			}
+			if shortInterestsIndex.Size() < likeeIndex[like].Size() {
+				shortInterestsIndex = likeeIndex[like]
+			}
+		}
+
+		if shortInterestsIndex != nil {
+			suitableIndexes.Put(
+				shortInterestsIndex.Size(),
+				namedIndex.Update([]byte("likes_contains"), shortInterestsIndex),
+			)
+		}
+	}
+
 	var selectedIndexName []byte
 	if suitableIndexes.Size() > 0 {
 		if _, shortestIndex := suitableIndexes.Min(); &shortestIndex != nil {
@@ -665,7 +686,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// FIXME: slow solution
 				suitable := true
 				for _, v := range likesContainsFilter {
-					if _, ok := account.uniqLikes[v]; !ok {
+					if _, ok := account.likes[v]; !ok {
 						suitable = false
 						break
 					}
