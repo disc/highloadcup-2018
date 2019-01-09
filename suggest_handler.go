@@ -62,7 +62,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	index := calculateSimilarityForUser(requestedAccount)
 	if index == nil || index.Size() == 0 {
-		emptySuggestResponse(ctx)
+		emptyResponse(ctx)
 		return
 	}
 
@@ -141,11 +141,6 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		return
 	}
 
-	// TODO: Use sjson for updates
-	emptySuggestResponse(ctx)
+	emptyResponse(ctx)
 	return
-}
-
-func emptySuggestResponse(ctx *fasthttp.RequestCtx) {
-	ctx.Success("application/json", []byte(`{"accounts":[]}`))
 }
