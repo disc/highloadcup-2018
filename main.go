@@ -48,7 +48,7 @@ func main() {
 	parseDataDir("./data/")
 
 	log.Println("Started calculateSimilarityIndex")
-	//calculateSimilarityIndex()
+
 	log.Println("Finished calculateSimilarityIndex, len is", len(similarityMap))
 
 	log.Println("Data has been parsed completely")

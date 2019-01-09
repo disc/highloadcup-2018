@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +20,7 @@ var (
 		return -utils.IntComparator(a, b)
 	}
 	inverseFloat64Comparator = func(a, b interface{}) int {
-		return -utils.Float64Comparator(a, b)
+		return -utils.Float32Comparator(a, b)
 	}
 	accountMap         = treemap.NewWith(inverseIntComparator)
 	countryMap         = map[string]*treemap.Map{}
@@ -29,8 +30,6 @@ var (
 	snameMap           = map[string]*treemap.Map{}
 	similarityMap      = map[int]*treemap.Map{}
 	globalInterestsMap = map[string]*treemap.Map{}
-	globalLikesMap     = map[*Account][]*Account{}
-	likersIndex        = map[int]*treemap.Map{} // likes by user
 	likeeIndex         = map[int]*treemap.Map{} // who liked this user
 )
 
@@ -55,12 +54,28 @@ type Account struct {
 	phoneCode     int
 	birthYear     int
 	premiumFinish int64
-	likes         map[int][]int
+	likes         map[int]LikesList
+}
+
+type LikesList []int
+
+func (list LikesList) getTimestamp() int {
+	var ts int
+
+	if len(list) > 1 {
+		var total = 0
+		for _, value := range list {
+			total += value
+		}
+		ts = total / int(len(list))
+	} else {
+		ts = list[0]
+	}
+
+	return ts
 }
 
 func createAccount(acc Account) {
-	// TODO: unset likes, interests
-
 	if len(acc.Interests) > 0 {
 		acc.interestsMap = make(map[string]struct{})
 		for _, interest := range acc.Interests {
@@ -96,7 +111,7 @@ func createAccount(acc Account) {
 	}
 
 	if len(acc.TempLikes) > 0 {
-		acc.likes = make(map[int][]int, 0)
+		acc.likes = make(map[int]LikesList, 0)
 		gjson.ParseBytes(acc.TempLikes).ForEach(func(key, value gjson.Result) bool {
 			like := value.Map()
 			likeId := int(like["id"].Int())
@@ -111,32 +126,6 @@ func createAccount(acc Account) {
 		})
 		acc.TempLikes = nil
 	}
-
-	//if len(acc.TempLikes) > 0 {
-	//	likesMap := make(map[int][]int, 0)
-	//	for _, like := range acc.TempLikes {
-	//		likesMap[like["id"]] = append(likesMap[like["id"]], like["ts"])
-	//
-	//		//globalLikesMap[accId] = append(globalLikesMap[accId], &acc)
-	//	}
-	//	acc.TempLikes = nil
-	//
-	//	uniqLikeMap := map[int]int{}
-	//	for id, timestamps := range likesMap {
-	//		var ts int
-	//		if len(timestamps) > 1 {
-	//			var total = 0
-	//			for _, value := range timestamps {
-	//				total += value
-	//			}
-	//			ts = total / int(len(timestamps))
-	//		} else {
-	//			ts = timestamps[0]
-	//		}
-	//		uniqLikeMap[id] = ts
-	//	}
-	//	//acc.likes = uniqLikeMap
-	//}
 
 	if acc.Country != "" {
 		if _, ok := countryMap[acc.Country]; !ok {
@@ -172,33 +161,29 @@ func createAccount(acc Account) {
 	accountMap.Put(acc.ID, &acc)
 }
 
-func calculateSimilarityIndex() {
-	accountMap.Each(func(key interface{}, value interface{}) {
-		calculateSimilarityForUser(value.(*Account))
-	})
-	// calculate for ine user
-	//value, _ := accountMap.Get(24156)
-	//calculateSimilarityForUser(value.(*Account))
-}
+func calculateSimilarityForUser(account *Account) *treemap.Map {
+	user1Likes := account.likes
+	if len(user1Likes) == 0 {
+		return nil
+	}
+	userSimilarityMap := treemap.NewWith(inverseFloat64Comparator)
+	for likeId, tsList := range user1Likes {
+		ts1 := tsList.getTimestamp()
+		it := likeeIndex[likeId].Iterator()
+		for it.Next() {
+			acc2 := it.Value().(*Account)
+			ts2 := acc2.likes[likeId].getTimestamp()
+			var similarity float32
+			if ts1 == ts2 {
+				similarity += 1
+			} else {
+				similarity += float32(1 / math.Abs(float64(ts1-ts2)))
+			}
+			if similarity > 0 {
+				userSimilarityMap.Put(similarity, acc2)
+			}
+		}
+	}
 
-func calculateSimilarityForUser(account *Account) {
-	//user1Likes := account.likes
-	//for likeId, ts1 := range user1Likes {
-	//	for _, acc2 := range globalLikesMap[likeId] {
-	//		ts2 := acc2.likes[likeId]
-	//		var similarity float64
-	//		if ts1 == ts2 {
-	//			similarity += 1
-	//		} else {
-	//			similarity += 1 / math.Abs(float64(ts1-ts2))
-	//		}
-	//		if similarity > 0 {
-	//			user1Id := account.ID
-	//			if _, ok := similarityMap[user1Id]; !ok {
-	//				similarityMap[user1Id] = treemap.NewWith(inverseFloat64Comparator)
-	//			}
-	//			similarityMap[user1Id].Put(similarity, acc2)
-	//		}
-	//	}
-	//}
+	return userSimilarityMap
 }

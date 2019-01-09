@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"strconv"
 
 	"github.com/emirpasic/gods/lists/arraylist"
@@ -61,8 +60,8 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 	}
 
-	index, hasSuggestions := similarityMap[accountId]
-	if !hasSuggestions {
+	index := calculateSimilarityForUser(requestedAccount)
+	if index == nil || index.Size() == 0 {
 		emptySuggestResponse(ctx)
 		return
 	}
@@ -84,92 +83,67 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	filtersCount := len(filters)
 
-	if index != nil {
-		it := index.Iterator()
-		for it.Next() {
-			if foundAccounts.Size() >= limit {
-				break
-			}
-			passedFilters := 0
-			account := it.Value().(*Account)
+	it := index.Iterator()
+	for it.Next() {
+		if foundAccounts.Size() >= limit {
+			break
+		}
+		passedFilters := 0
+		account := it.Value().(*Account)
 
-			if countryEqFilter != "" {
-				if account.Country == countryEqFilter {
-					passedFilters += 1
-				} else {
+		if countryEqFilter != "" {
+			if account.Country == countryEqFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+
+		if cityEqFilter != "" {
+			if account.City == cityEqFilter {
+				passedFilters += 1
+			} else {
+				continue
+			}
+		}
+
+		if passedFilters == filtersCount {
+			suggestsByOneUser := treemap.NewWith(inverseIntComparator)
+			for likeId := range account.likes {
+				// ignore exists like
+				if _, exists := requestedAccount.likes[likeId]; exists {
 					continue
 				}
-			}
-
-			if cityEqFilter != "" {
-				if account.City == cityEqFilter {
-					passedFilters += 1
-				} else {
-					continue
-				}
-			}
-
-			if passedFilters == filtersCount {
-				suggestsByOneUser := treemap.NewWith(inverseIntComparator)
-				for likeId := range account.likes {
-					// ignore exists like
-					if _, exists := requestedAccount.likes[likeId]; exists {
-						continue
-					}
-					if suggestedLike, ok := accountMap.Get(likeId); ok {
-						suggestedAccount := suggestedLike.(*Account)
-						if suggestedAccount.Sex != requestedAccount.Sex {
-							// sort by like id from one user
-							suggestsByOneUser.Put(suggestedAccount.ID, suggestedAccount)
-						}
+				if suggestedLike, ok := accountMap.Get(likeId); ok {
+					suggestedAccount := suggestedLike.(*Account)
+					if suggestedAccount.Sex != requestedAccount.Sex {
+						// sort by like id from one user
+						suggestsByOneUser.Put(suggestedAccount.ID, suggestedAccount)
 					}
 				}
-				if suggestsByOneUser.Size() > 0 {
-					foundAccounts.Add(suggestsByOneUser.Values()...)
-				}
+			}
+			if suggestsByOneUser.Size() > 0 {
+				foundAccounts.Add(suggestsByOneUser.Values()...)
 			}
 		}
 	}
 
-	jsonData := []byte(`{"accounts":[]}`)
 	if foundAccounts.Size() > 0 {
-		jsonData, _ = json.Marshal(prepareSuggestResponse(foundAccounts, limit))
+		var found []*Account
+		it := foundAccounts.Iterator()
+		for it.Next() && len(found) < limit {
+			found = append(found, it.Value().(*Account))
+		}
+
+		ctx.Success("application/json", prepareResponseBytes(found, []string{
+			"id", "email", "status", "fname", "sname",
+		}))
+		return
 	}
 
 	// TODO: Use sjson for updates
-	ctx.Success("application/json", jsonData)
+	emptySuggestResponse(ctx)
 	return
-}
-
-func prepareSuggestResponse(found *arraylist.List, limit int) *FilterResponse {
-	// ignore interests, likes
-	responseProperties := []string{
-		"id", "email", "status", "fname", "sname",
-	}
-	var results = make([]AccountResponse, 0)
-	it := found.Iterator()
-	for it.Next() && len(results) < limit {
-		account := it.Value().(*Account)
-		result := AccountResponse{}
-		for _, key := range responseProperties {
-			switch key {
-			case "id":
-				result[key] = account.ID
-			case "email":
-				result[key] = account.Email
-			case "status":
-				result[key] = account.Status
-			case "fname":
-				result[key] = account.Fname
-			case "sname":
-			}
-		}
-		results = append(results, result)
-	}
-
-	return &FilterResponse{
-		Accounts: results,
-	}
 }
 
 func emptySuggestResponse(ctx *fasthttp.RequestCtx) {
