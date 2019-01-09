@@ -32,12 +32,35 @@ func BenchmarkFilterHandler(b *testing.B) {
 	args := ctx.QueryArgs()
 
 	args.Add("sex_eq", "f")
-	args.Add("interests_any", "YouTube,Бургеры")
+	args.Add("interests_contains", "YouTube,Бургеры")
 	args.Add("limit", "50")
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		filterHandler(&ctx)
+	}
+}
+
+func BenchmarkContains(b *testing.B) {
+	haystack := map[string]struct{}{
+		"YouTube": struct{}{},
+		"Пицца":   struct{}{},
+		"Music":   struct{}{},
+		"Sports":  struct{}{},
+		"Пиво":    struct{}{},
+		"Mac":     struct{}{},
+		"Бургеры": struct{}{},
+	}
+
+	needle := map[string]struct{}{
+		"YouTube": struct{}{},
+		"Бургеры": struct{}{},
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		filterContains(needle, haystack)
 	}
 }

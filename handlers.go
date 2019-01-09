@@ -445,6 +445,27 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
+	if len(interestsContainsFilter) > 0 {
+		// get shortest index
+		var shortInterestsIndex *treemap.Map
+		for interest := range interestsContainsFilter {
+			if shortInterestsIndex == nil {
+				shortInterestsIndex = globalInterestsMap[interest]
+				continue
+			}
+			if shortInterestsIndex.Size() < globalInterestsMap[interest].Size() {
+				shortInterestsIndex = globalInterestsMap[interest]
+			}
+		}
+
+		if shortInterestsIndex != nil {
+			suitableIndexes.Put(
+				shortInterestsIndex.Size(),
+				namedIndex.Update([]byte("interests_contains"), shortInterestsIndex),
+			)
+		}
+	}
+
 	var selectedIndexName []byte
 	if suitableIndexes.Size() > 0 {
 		if _, shortestIndex := suitableIndexes.Min(); &shortestIndex != nil {

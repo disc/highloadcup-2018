@@ -18,14 +18,15 @@ var (
 	inverseFloat64Comparator = func(a, b interface{}) int {
 		return -utils.Float64Comparator(a, b)
 	}
-	accountMap     = treemap.NewWith(inverseIntComparator)
-	countryMap     = map[string]*treemap.Map{}
-	cityMap        = map[string]*treemap.Map{}
-	birthYearMap   = map[int]*treemap.Map{}
-	fnameMap       = map[string]*treemap.Map{}
-	snameMap       = map[string]*treemap.Map{}
-	similarityMap  = map[int]*treemap.Map{}
-	globalLikesMap = map[*Account][]*Account{}
+	accountMap         = treemap.NewWith(inverseIntComparator)
+	countryMap         = map[string]*treemap.Map{}
+	cityMap            = map[string]*treemap.Map{}
+	birthYearMap       = map[int]*treemap.Map{}
+	fnameMap           = map[string]*treemap.Map{}
+	snameMap           = map[string]*treemap.Map{}
+	similarityMap      = map[int]*treemap.Map{}
+	globalInterestsMap = map[string]*treemap.Map{}
+	globalLikesMap     = map[*Account][]*Account{}
 )
 
 type Account struct {
@@ -59,6 +60,10 @@ func createAccount(acc Account) {
 		acc.interestsMap = make(map[string]struct{})
 		for _, interest := range acc.Interests {
 			acc.interestsMap[interest] = struct{}{}
+			if _, ok := globalInterestsMap[interest]; !ok {
+				globalInterestsMap[interest] = treemap.NewWith(inverseIntComparator)
+			}
+			globalInterestsMap[interest].Put(acc.ID, &acc)
 		}
 		acc.Interests = nil
 	}
