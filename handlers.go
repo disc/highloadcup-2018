@@ -449,6 +449,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		// get shortest index
 		var shortInterestsIndex *treemap.Map
 		for interest := range interestsContainsFilter {
+			if globalInterestsMap[interest] == nil {
+				continue
+			}
 			if shortInterestsIndex == nil {
 				shortInterestsIndex = globalInterestsMap[interest]
 				continue
@@ -469,10 +472,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		// get shortest index
 		var shortInterestsIndex *treemap.Map
 		for _, like := range likesContainsFilter {
+			if likeeIndex[like] == nil {
+				continue
+			}
 			if shortInterestsIndex == nil {
 				shortInterestsIndex = likeeIndex[like]
 				continue
-			} else if shortInterestsIndex != nil && shortInterestsIndex.Size() < likeeIndex[like].Size() {
+			} else if shortInterestsIndex.Size() < likeeIndex[like].Size() {
 				shortInterestsIndex = likeeIndex[like]
 			}
 		}
