@@ -4,6 +4,8 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/emirpasic/gods/lists/arraylist"
+
 	"github.com/emirpasic/gods/maps/treemap"
 
 	"github.com/valyala/fasthttp"
@@ -68,7 +70,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 	}
 
-	foundAccounts := treemap.NewWith(inverseFloat32Comparator)
+	foundAccounts := arraylist.New()
 
 	filters := make(map[string]interface{})
 
@@ -104,9 +106,9 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	it := index.Iterator()
 	for it.Next() {
-		if foundAccounts.Size() >= limit {
-			break
-		}
+		//if foundAccounts.Size() >= limit {
+		//	break
+		//}
 		passedFilters := 0
 		account := it.Value().(*Account)
 
@@ -130,23 +132,33 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 			}
 		}
 
-		compatibility := calculateCompatibility(requestedAccount, account)
-		if compatibility > 0 {
+		interestsIntersections := intersectionsCount(requestedAccount.interestsMap, account.interestsMap)
+		if interestsIntersections > 0 {
 			passedFilters += 1
 		} else {
 			continue
 		}
 
+		// WHERE commonInterests>0 ORDER BY premium_now, status, commonInterests, ageDiffSeconds
+
 		if passedFilters == filtersCount {
-			foundAccounts.Put(compatibility, account)
+			foundAccounts.Add(&CompatibilityResult{
+				id:              account.ID,
+				hasPremiumNow:   account.hasActivePremium(now),
+				status:          account.Status,
+				commonInterests: interestsIntersections,
+				ageDiff:         math.Abs(float64(requestedAccount.Birth - account.Birth)),
+				account:         account,
+			})
 		}
 	}
 
 	if foundAccounts.Size() > 0 {
+		foundAccounts.Sort(inverseCompatibilityComparator)
 		var found []*Account
 		it := foundAccounts.Iterator()
 		for it.Next() && len(found) < limit {
-			found = append(found, it.Value().(*Account))
+			found = append(found, it.Value().(*CompatibilityResult).account)
 		}
 
 		ctx.Success("application/json", prepareResponseBytes(found, []string{
@@ -159,39 +171,81 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	return
 }
 
-func calculateCompatibility(me *Account, somebody *Account) float32 {
-	interestsIntersections := intersectionsCount(somebody.interestsMap, me.interestsMap)
+type CompatibilityResult struct {
+	id              int
+	hasPremiumNow   bool
+	status          string
+	commonInterests int
+	ageDiff         float64
+	account         *Account
+}
 
-	if interestsIntersections == 0 {
+var inverseCompatibilityComparator = func(a, b interface{}) int {
+	return -compatibilityComparator(a, b)
+}
+
+// Custom comparator (sort by IDs)
+// Should return a number:
+//    negative , if a < b
+//    zero     , if a == b
+//    positive , if a > b
+func compatibilityComparator(a, b interface{}) int {
+
+	// WHERE commonInterests>0 ORDER BY premium_now desc, status enum, commonInterests desc, ageDiffSeconds asc
+
+	// Type assertion, program will panic if this is not respected
+	acc1 := a.(*CompatibilityResult)
+	acc2 := b.(*CompatibilityResult)
+
+	switch {
+	case acc1.hasPremiumNow == acc2.hasPremiumNow && acc1.hasPremiumNow && acc2.hasPremiumNow:
 		return 0
+	case acc1.hasPremiumNow != acc2.hasPremiumNow:
+		//if acc1.hasPremiumNow && acc2.hasPremiumNow {
+		//	return 0
+		//}
+		if acc1.hasPremiumNow {
+			return -1
+		} else {
+			return 1
+		}
+	case acc1.status != acc2.status:
+		if acc1.status == "свободны" {
+			return -1
+		}
+		if acc2.status == "свободны" {
+			return 1
+		}
+		if acc1.status == "всё сложно" {
+			return -1
+		}
+		if acc2.status == "всё сложно" {
+			return 1
+		}
+		if acc1.status == "заняты" {
+			return -1
+		}
+		if acc2.status == "заняты" {
+			return 1
+		}
+		return 0
+	case acc1.commonInterests != acc2.commonInterests:
+		if acc1.commonInterests > acc2.commonInterests {
+			return -1
+		} else {
+			return 1
+		}
+	case acc1.ageDiff != acc2.ageDiff:
+		if acc1.ageDiff < acc2.ageDiff {
+			return -1
+		} else {
+			return 1
+		}
+	default:
+		if acc1.id < acc2.id {
+			return -1
+		} else {
+			return 1
+		}
 	}
-
-	var quantity = float32(1.0)
-	switch somebody.Status {
-	case "свободны":
-		quantity *= 1
-	case "все сложно":
-		quantity *= 0.4
-	case "заняты":
-		quantity *= 0.1
-	}
-
-	// update this
-	// max 1
-	quantity *= 1 / float32(len(me.interestsMap)/interestsIntersections)
-
-	if me.Birth == somebody.Birth {
-		quantity *= 1
-	} else {
-		tsDiff := float32(math.Abs(float64(me.Birth - somebody.Birth)))
-
-		// age
-		quantity *= 1 / tsDiff
-	}
-
-	if somebody.hasActivePremium(now) {
-		quantity *= 100
-	}
-
-	return quantity
 }
