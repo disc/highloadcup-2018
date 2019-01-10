@@ -198,50 +198,53 @@ func compatibilityComparator(a, b interface{}) int {
 	acc2 := b.(*CompatibilityResult)
 
 	switch {
-	case acc1.hasPremiumNow == acc2.hasPremiumNow && acc1.hasPremiumNow && acc2.hasPremiumNow:
-		return 0
-	case acc1.hasPremiumNow != acc2.hasPremiumNow:
-		//if acc1.hasPremiumNow && acc2.hasPremiumNow {
-		//	return 0
-		//}
+	case !(acc1.hasPremiumNow && acc2.hasPremiumNow):
 		if acc1.hasPremiumNow {
 			return -1
 		} else {
 			return 1
 		}
-	case acc1.status != acc2.status:
+	//case acc1.hasPremiumNow && !acc2.hasPremiumNow:
+	//	if acc1.hasPremiumNow {
+	//		return -1
+	//	} else {
+	//		return 1
+	//	}
+	//case !acc1.hasPremiumNow && !acc2.hasPremiumNow:
+	//	return 1
+	// свободны > всё сложно > заняты
+	case acc1.status == "свободны" || acc2.status == "свободны":
 		if acc1.status == "свободны" {
 			return -1
-		}
-		if acc2.status == "свободны" {
+		} else {
 			return 1
 		}
-		if acc1.status == "всё сложно" {
+	case acc1.status == "все сложно" || acc2.status == "все сложно":
+		if acc1.status == "все сложно" {
 			return -1
-		}
-		if acc2.status == "всё сложно" {
+		} else {
 			return 1
 		}
+	case acc1.status == "заняты" || acc2.status == "заняты":
 		if acc1.status == "заняты" {
 			return -1
-		}
-		if acc2.status == "заняты" {
-			return 1
-		}
-		return 0
-	case acc1.commonInterests != acc2.commonInterests:
-		if acc1.commonInterests > acc2.commonInterests {
-			return -1
 		} else {
 			return 1
 		}
-	case acc1.ageDiff != acc2.ageDiff:
-		if acc1.ageDiff < acc2.ageDiff {
-			return -1
-		} else {
-			return 1
-		}
+	//case acc1.commonInterests != acc2.commonInterests:
+	//	if acc1.commonInterests > acc2.commonInterests {
+	//		return -1
+	//	} else {
+	//		return 1
+	//	}
+	//case acc1.ageDiff != acc2.ageDiff:
+	//	if acc1.ageDiff < acc2.ageDiff {
+	//		return -1
+	//	} else {
+	//		return 1
+	//	}
 	default:
+		return 0
 		if acc1.id < acc2.id {
 			return -1
 		} else {
