@@ -52,30 +52,32 @@ func prepareResponseBytes(found []*Account, responseProperties []string) []byte 
 			case "id":
 				bytesBuffer = append(bytesBuffer, `"id":`...)
 				bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.ID)
-			case "sex":
-				bytesBuffer = append(bytesBuffer, `"sex":"`+account.Sex+`"`...)
 			case "email":
-				bytesBuffer = append(bytesBuffer, `"email":"`+account.Email+`"`...)
+				bytesBuffer = append(bytesBuffer, `,"email":"`+account.Email+`"`...)
+			case "sex":
+				bytesBuffer = append(bytesBuffer, `,"sex":"`+account.Sex+`"`...)
 			case "status":
-				bytesBuffer = append(bytesBuffer, `"status":"`+account.Status+`"`...)
+				bytesBuffer = append(bytesBuffer, `,"status":"`+account.Status+`"`...)
 			case "fname":
-				bytesBuffer = append(bytesBuffer, `"fname":"`+account.Fname+`"`...)
+				if len(account.Fname) > 0 {
+					bytesBuffer = append(bytesBuffer, `,"fname":"`+account.Fname+`"`...)
+				}
 			case "sname":
-				bytesBuffer = append(bytesBuffer, `"sname":"`+account.Sname+`"`...)
+				if len(account.Sname) > 0 {
+					bytesBuffer = append(bytesBuffer, `,"sname":"`+account.Sname+`"`...)
+				}
 			case "phone":
-				bytesBuffer = append(bytesBuffer, `"phone":"`+account.Phone+`"`...)
+				bytesBuffer = append(bytesBuffer, `,"phone":"`+account.Phone+`"`...)
 			case "country":
-				bytesBuffer = append(bytesBuffer, `"country":"`+account.Country+`"`...)
+				bytesBuffer = append(bytesBuffer, `,"country":"`+account.Country+`"`...)
 			case "city":
-				bytesBuffer = append(bytesBuffer, `"city":"`+account.City+`"`...)
+				bytesBuffer = append(bytesBuffer, `,"city":"`+account.City+`"`...)
 			case "birth":
-				bytesBuffer = append(bytesBuffer, `"birth":`...)
+				bytesBuffer = append(bytesBuffer, `,"birth":`...)
 				bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.Birth)
 			case "premium":
-				if account.Premium == nil {
-					bytesBuffer = append(bytesBuffer, `"premium":null`...)
-				} else {
-					bytesBuffer = append(bytesBuffer, `"premium":{"start":`...)
+				if account.Premium != nil {
+					bytesBuffer = append(bytesBuffer, `,"premium":{"start":`...)
 					bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.Premium["start"])
 					bytesBuffer = append(bytesBuffer, `,"finish":`...)
 					bytesBuffer = fasthttp.AppendUint(bytesBuffer, account.Premium["finish"])
@@ -85,8 +87,6 @@ func prepareResponseBytes(found []*Account, responseProperties []string) []byte 
 
 			if lastKey {
 				bytesBuffer = append(bytesBuffer, `}`...)
-			} else {
-				bytesBuffer = append(bytesBuffer, `,`...)
 			}
 		}
 
