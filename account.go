@@ -54,7 +54,7 @@ type Account struct {
 }
 
 func (acc Account) hasActivePremium(now int64) bool {
-	return int(now) >= acc.Premium["start"] && int(now) < acc.Premium["finish"]
+	return acc.Premium["start"] <= int(now) && acc.Premium["finish"] > int(now)
 }
 
 type LikesList []int

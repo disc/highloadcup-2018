@@ -183,7 +183,7 @@ func (cr CompatibilityResult) getStatusValue() int {
 	switch cr.status {
 	case "свободны":
 		return 1
-	case "все сложно":
+	case "всё сложно":
 		return 2
 	default:
 		return 3
@@ -192,9 +192,9 @@ func (cr CompatibilityResult) getStatusValue() int {
 
 func (cr CompatibilityResult) getPremium() int {
 	if cr.hasPremiumNow {
-		return 0
-	} else {
 		return 1
+	} else {
+		return 2
 	}
 }
 

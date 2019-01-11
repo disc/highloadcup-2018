@@ -8,7 +8,11 @@ import (
 	"github.com/emirpasic/gods/lists/arraylist"
 )
 
-func Test2Comparator(t *testing.T) {
+func init() {
+	parseDataDir("./data/")
+}
+
+func _Test2Comparator(t *testing.T) {
 	list := arraylist.New()
 	list.Add(&CompatibilityResult{
 		id:              1,
@@ -20,7 +24,7 @@ func Test2Comparator(t *testing.T) {
 	list.Add(&CompatibilityResult{
 		id:              2,
 		hasPremiumNow:   true,
-		status:          "все сложно",
+		status:          "всё сложно",
 		commonInterests: 1,
 		ageDiff:         0,
 	})
@@ -63,7 +67,7 @@ func Test2Comparator(t *testing.T) {
 		id:              8,
 		hasPremiumNow:   true,
 		commonInterests: 3,
-		status:          "все сложно",
+		status:          "всё сложно",
 		ageDiff:         2,
 	})
 	list.Add(&CompatibilityResult{
@@ -77,21 +81,21 @@ func Test2Comparator(t *testing.T) {
 		id:              10,
 		hasPremiumNow:   false,
 		commonInterests: 2,
-		status:          "все сложно",
+		status:          "всё сложно",
 		ageDiff:         2,
 	})
 	list.Add(&CompatibilityResult{
 		id:              11,
 		hasPremiumNow:   false,
 		commonInterests: 3,
-		status:          "все сложно",
+		status:          "всё сложно",
 		ageDiff:         2,
 	})
 	////
 	//list.Add(&CompatibilityResult{
 	//	id:            1,
 	//	hasPremiumNow: true,
-	//	status:        "все сложно",
+	//	status:        "всё сложно",
 	//})
 	//list.Add(&CompatibilityResult{
 	//	id:            2,
@@ -106,7 +110,7 @@ func Test2Comparator(t *testing.T) {
 	//list.Add(&CompatibilityResult{
 	//	id:            4,
 	//	hasPremiumNow: false,
-	//	status:        "все сложно",
+	//	status:        "всё сложно",
 	//})
 	//list.Add(&CompatibilityResult{
 	//	id:            5,
@@ -133,66 +137,80 @@ func Test2Comparator(t *testing.T) {
 	}
 }
 
+type compTest struct {
+	id          int
+	expectedIDs []int
+}
+
+var compTestData = []compTest{
+	{11335, []int{17254, 16886, 11154, 9546, 16188, 26286}},
+	{4421, []int{27078, 27136}},
+}
+
 func TestComparator(t *testing.T) {
-	expectedData := []int{17254, 16886, 11154, 9546, 16188, 26286}
+	for _, compTest := range compTestData {
+		expectedData := compTest.expectedIDs
 
-	parseDataDir("./data/")
+		var list []*CompatibilityResult
+		requestedAccount, _ := accountMap.Get(compTest.id)
 
-	var list []*CompatibilityResult
-	requestedAccount, _ := accountMap.Get(11335)
+		for _, acc := range accountMap.Values() {
+			account := acc.(*Account)
 
-	for _, acc := range accountMap.Values() {
-		account := acc.(*Account)
-		intersectionsCount := intersectionsCount(requestedAccount.(*Account).interestsMap, account.interestsMap)
-		if intersectionsCount == 0 {
-			continue
+			if requestedAccount.(*Account).Sex == account.Sex {
+				continue
+			}
+
+			intersectionsCount := intersectionsCount(requestedAccount.(*Account).interestsMap, account.interestsMap)
+			if intersectionsCount == 0 {
+				continue
+			}
+
+			list = append(list, &CompatibilityResult{
+				id:              account.ID,
+				hasPremiumNow:   account.hasActivePremium(now),
+				status:          account.Status,
+				commonInterests: intersectionsCount,
+				ageDiff:         int(math.Abs(float64(requestedAccount.(*Account).Birth - account.Birth))),
+				account:         account,
+			})
 		}
 
-		if requestedAccount.(*Account).Sex == account.Sex {
-			continue
+		var expectedList []*CompatibilityResult
+		for _, accID := range expectedData {
+			account, _ := accountMap.Get(accID)
+
+			expectedList = append(expectedList, &CompatibilityResult{
+				id:              account.(*Account).ID,
+				hasPremiumNow:   account.(*Account).hasActivePremium(now),
+				status:          account.(*Account).Status,
+				commonInterests: intersectionsCount(requestedAccount.(*Account).interestsMap, account.(*Account).interestsMap),
+				ageDiff:         requestedAccount.(*Account).Birth - account.(*Account).Birth,
+				account:         account.(*Account),
+			})
 		}
 
-		list = append(list, &CompatibilityResult{
-			id:              account.ID,
-			hasPremiumNow:   account.hasActivePremium(now),
-			status:          account.Status,
-			commonInterests: intersectionsCount,
-			ageDiff:         int(math.Abs(float64(requestedAccount.(*Account).Birth - account.Birth))),
-			account:         account,
-		})
-	}
+		sort.Sort(compatibilitySort(list))
 
-	var expectedList []*CompatibilityResult
-	for _, accID := range expectedData {
-		account, _ := accountMap.Get(accID)
+		isError := false
+		for idx, value := range expectedList {
+			foundAccId := list[idx].id
 
-		expectedList = append(expectedList, &CompatibilityResult{
-			id:              account.(*Account).ID,
-			hasPremiumNow:   account.(*Account).hasActivePremium(now),
-			status:          account.(*Account).Status,
-			commonInterests: intersectionsCount(requestedAccount.(*Account).interestsMap, account.(*Account).interestsMap),
-			ageDiff:         requestedAccount.(*Account).Birth - account.(*Account).Birth,
-			account:         account.(*Account),
-		})
-	}
+			if foundAccId != expectedData[idx] {
+				isError = true
 
-	sort.Sort(compatibilitySort(list))
-
-	log.Println("Expected:")
-	for idx, value := range expectedList {
-		foundAccId := list[idx].id
-
-		if foundAccId != expectedData[idx] {
-			res := value
-			log.Printf("|%6v|%6v|%12v|%3v|%15v", res.id, res.hasPremiumNow, res.status, res.commonInterests, res.ageDiff)
-			t.Error("Incorrect position for #", idx, "Expected", value.id, "got", foundAccId)
+				res := value
+				log.Println("Expected:")
+				log.Printf("|%6v(%v)|%6v|%12v|%3v|%15v", res.id, res.account.Sex, res.hasPremiumNow, res.status, res.commonInterests, res.ageDiff)
+				t.Error("Incorrect position for #", idx, "Expected", value.id, "got", foundAccId)
+			}
 		}
+		if isError {
+			log.Println("Actual:")
 
-	}
-
-	log.Println("Actual:")
-
-	for _, res := range list[:10] {
-		log.Printf("|%6v|%6v|%12v|%3v|%15v", res.id, res.hasPremiumNow, res.status, res.commonInterests, res.ageDiff)
+			for _, res := range list[:10] {
+				log.Printf("|%6v(%v)|%6v|%12v|%3v|%15v", res.id, res.account.Sex, res.hasPremiumNow, res.status, res.commonInterests, res.ageDiff)
+			}
+		}
 	}
 }
