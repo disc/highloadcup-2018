@@ -46,16 +46,15 @@ type Account struct {
 	Premium   map[string]int  `json:"premium"`
 	TempLikes json.RawMessage `json:"likes"` // temp data, cleared when user parsed
 
-	interestsMap  map[string]struct{} // try map[string]struct{}{}
-	emailDomain   string
-	phoneCode     int
-	birthYear     int
-	premiumFinish int64
-	likes         map[int]LikesList
+	interestsMap map[string]struct{}
+	emailDomain  string
+	phoneCode    int
+	birthYear    int
+	likes        map[int]LikesList
 }
 
 func (acc Account) hasActivePremium(now int64) bool {
-	return acc.premiumFinish >= now
+	return int(now) >= acc.Premium["start"] && int(now) < acc.Premium["finish"]
 }
 
 type LikesList []int
@@ -106,9 +105,6 @@ func createAccount(acc Account) {
 	if acc.Birth != 0 {
 		tm := time.Unix(int64(acc.Birth), 0)
 		acc.birthYear = tm.Year()
-	}
-	if finish, ok := acc.Premium["finish"]; ok {
-		acc.premiumFinish = int64(finish)
 	}
 
 	if len(acc.TempLikes) > 0 {

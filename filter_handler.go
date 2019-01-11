@@ -735,7 +735,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if premiumNowFilter {
-				if account.premiumFinish >= int64(now) {
+				if account.hasActivePremium(now) {
 					passedFilters += 1
 				} else {
 					continue

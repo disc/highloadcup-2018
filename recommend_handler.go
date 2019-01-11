@@ -2,9 +2,8 @@ package main
 
 import (
 	"math"
+	"sort"
 	"strconv"
-
-	"github.com/emirpasic/gods/lists/arraylist"
 
 	"github.com/emirpasic/gods/maps/treemap"
 
@@ -70,7 +69,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 	}
 
-	foundAccounts := arraylist.New()
+	var foundAccounts []*CompatibilityResult
 
 	filters := make(map[string]interface{})
 
@@ -106,9 +105,6 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	it := index.Iterator()
 	for it.Next() {
-		//if foundAccounts.Size() >= limit {
-		//	break
-		//}
 		passedFilters := 0
 		account := it.Value().(*Account)
 
@@ -142,23 +138,26 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		// WHERE commonInterests>0 ORDER BY premium_now, status, commonInterests, ageDiffSeconds
 
 		if passedFilters == filtersCount {
-			foundAccounts.Add(&CompatibilityResult{
+			foundAccounts = append(foundAccounts, &CompatibilityResult{
 				id:              account.ID,
 				hasPremiumNow:   account.hasActivePremium(now),
 				status:          account.Status,
 				commonInterests: interestsIntersections,
-				ageDiff:         math.Abs(float64(requestedAccount.Birth - account.Birth)),
+				ageDiff:         int(math.Abs(float64(requestedAccount.Birth - account.Birth))),
 				account:         account,
 			})
 		}
 	}
 
-	if foundAccounts.Size() > 0 {
-		foundAccounts.Sort(inverseCompatibilityComparator)
+	if len(foundAccounts) > 0 {
+		sort.Sort(compatibilitySort(foundAccounts))
+
 		var found []*Account
-		it := foundAccounts.Iterator()
-		for it.Next() && len(found) < limit {
-			found = append(found, it.Value().(*CompatibilityResult).account)
+		for _, v := range foundAccounts {
+			if len(found) >= limit {
+				break
+			}
+			found = append(found, v.account)
 		}
 
 		ctx.Success("application/json", prepareResponseBytes(found, []string{
@@ -176,79 +175,78 @@ type CompatibilityResult struct {
 	hasPremiumNow   bool
 	status          string
 	commonInterests int
-	ageDiff         float64
+	ageDiff         int
 	account         *Account
 }
 
-var inverseCompatibilityComparator = func(a, b interface{}) int {
-	return -compatibilityComparator(a, b)
+func (cr CompatibilityResult) getStatusValue() int {
+	switch cr.status {
+	case "свободны":
+		return 1
+	case "все сложно":
+		return 2
+	default:
+		return 3
+	}
 }
 
-// Custom comparator (sort by IDs)
-// Should return a number:
-//    negative , if a < b
-//    zero     , if a == b
-//    positive , if a > b
-func compatibilityComparator(a, b interface{}) int {
-
-	// WHERE commonInterests>0 ORDER BY premium_now desc, status enum, commonInterests desc, ageDiffSeconds asc
-
-	// Type assertion, program will panic if this is not respected
-	acc1 := a.(*CompatibilityResult)
-	acc2 := b.(*CompatibilityResult)
-
-	switch {
-	case !(acc1.hasPremiumNow && acc2.hasPremiumNow):
-		if acc1.hasPremiumNow {
-			return -1
-		} else {
-			return 1
-		}
-	//case acc1.hasPremiumNow && !acc2.hasPremiumNow:
-	//	if acc1.hasPremiumNow {
-	//		return -1
-	//	} else {
-	//		return 1
-	//	}
-	//case !acc1.hasPremiumNow && !acc2.hasPremiumNow:
-	//	return 1
-	// свободны > всё сложно > заняты
-	case acc1.status == "свободны" || acc2.status == "свободны":
-		if acc1.status == "свободны" {
-			return -1
-		} else {
-			return 1
-		}
-	case acc1.status == "все сложно" || acc2.status == "все сложно":
-		if acc1.status == "все сложно" {
-			return -1
-		} else {
-			return 1
-		}
-	case acc1.status == "заняты" || acc2.status == "заняты":
-		if acc1.status == "заняты" {
-			return -1
-		} else {
-			return 1
-		}
-	//case acc1.commonInterests != acc2.commonInterests:
-	//	if acc1.commonInterests > acc2.commonInterests {
-	//		return -1
-	//	} else {
-	//		return 1
-	//	}
-	//case acc1.ageDiff != acc2.ageDiff:
-	//	if acc1.ageDiff < acc2.ageDiff {
-	//		return -1
-	//	} else {
-	//		return 1
-	//	}
-	default:
+func (cr CompatibilityResult) getPremium() int {
+	if cr.hasPremiumNow {
 		return 0
-		if acc1.id < acc2.id {
-			return -1
+	} else {
+		return 1
+	}
+}
+
+type compatibilitySort []*CompatibilityResult
+
+func (s compatibilitySort) Len() int {
+	return len(s)
+}
+func (s compatibilitySort) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s compatibilitySort) Less(i, j int) bool {
+	acc1 := s[i]
+	acc2 := s[j]
+	result := 0
+
+	if result == 0 {
+		if acc1.getPremium() < acc2.getPremium() {
+			return true
+		} else if acc1.getPremium() > acc2.getPremium() {
+			return false
 		} else {
-			return 1
+			result = 0
 		}
 	}
+	if result == 0 {
+		if acc1.getStatusValue() < acc2.getStatusValue() {
+			return true
+		} else if acc1.getStatusValue() > acc2.getStatusValue() {
+			return false
+		} else {
+			result = 0
+		}
+	}
+	if result == 0 {
+		if acc1.commonInterests > acc2.commonInterests {
+			return true
+		} else if acc1.commonInterests < acc2.commonInterests {
+			return false
+		} else {
+			result = 0
+		}
+	}
+	if result == 0 {
+		if acc1.ageDiff < acc2.ageDiff {
+			return true
+		} else if acc1.ageDiff > acc2.ageDiff {
+			return false
+		} else {
+			result = 0
+		}
+	}
+
+	return acc1.id < acc2.id
 }
