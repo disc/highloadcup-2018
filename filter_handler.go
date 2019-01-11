@@ -203,6 +203,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if string(fnameNullF) == "0" {
 			fnameNotNullFilter = true
 			filters["fname_not_null"] = 1
+			responseProperties = append(responseProperties, "fname")
 		} else {
 			fnameNullFilter = true
 			filters["fname_null"] = 1
@@ -232,6 +233,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if string(snameNullF) == "0" {
 			snameNotNullFilter = true
 			filters["sname_not_null"] = 1
+			responseProperties = append(responseProperties, "sname")
 		} else {
 			snameNullFilter = true
 			filters["sname_null"] = 1
@@ -245,6 +247,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if string(phoneNullF) == "0" {
 			phoneNotNullFilter = true
 			filters["phone_not_null"] = 1
+			responseProperties = append(responseProperties, "phone")
 		} else {
 			phoneNullFilter = true
 			filters["phone_null"] = 1
@@ -293,6 +296,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if string(cityNullF) == "0" {
 			cityNotNullFilter = true
 			filters["city_not_null"] = 1
+			responseProperties = append(responseProperties, "city")
 		} else {
 			cityNullFilter = true
 			filters["city_null"] = 1
@@ -306,6 +310,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		if string(premiumNullF) == "0" {
 			premiumNotNullFilter = true
 			filters["premium_not_null"] = 1
+			responseProperties = append(responseProperties, "premium")
 		} else {
 			premiumNullFilter = true
 			filters["premium_null"] = 1
