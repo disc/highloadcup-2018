@@ -26,6 +26,7 @@ var (
 	birthYearMap       = map[int]*treemap.Map{}
 	fnameMap           = map[string]*treemap.Map{}
 	snameMap           = map[string]*treemap.Map{}
+	sexIndex           = map[string]*treemap.Map{}
 	globalInterestsMap = map[string]*treemap.Map{}
 	likeeIndex         = map[int]*treemap.Map{} // who liked this user
 )
@@ -153,6 +154,12 @@ func createAccount(acc Account) {
 			snameMap[acc.Sname] = treemap.NewWith(inverseIntComparator)
 		}
 		snameMap[acc.Sname].Put(acc.ID, &acc)
+	}
+	if acc.Sex != "" {
+		if _, ok := sexIndex[acc.Sex]; !ok {
+			sexIndex[acc.Sex] = treemap.NewWith(inverseIntComparator)
+		}
+		sexIndex[acc.Sex].Put(acc.ID, &acc)
 	}
 
 	accountMap.Put(acc.ID, &acc)

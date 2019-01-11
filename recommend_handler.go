@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"math"
 	"sort"
 	"strconv"
@@ -50,7 +51,12 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	vmap := treemapPool.Get()
 	suitableIndexes := vmap.(*treemap.Map)
-	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
+	switch requestedAccount.Sex {
+	case "m":
+		suitableIndexes.Put(sexIndex["f"].Size(), namedIndex.Update([]byte("sex_f"), sexIndex["f"]))
+	case "f":
+		suitableIndexes.Put(sexIndex["m"].Size(), namedIndex.Update([]byte("sex_m"), sexIndex["m"]))
+	}
 
 	var countryEqF []byte
 	var cityEqF []byte
@@ -79,17 +85,31 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	if len(countryEqF) > 0 {
 		countryEqFilter = string(countryEqF)
 		filters["country"] = 1
+		if countryMap[countryEqFilter] != nil {
+			suitableIndexes.Put(
+				countryMap[countryEqFilter].Size(),
+				namedIndex.Update([]byte("country"), countryMap[countryEqFilter]),
+			)
+		}
 	}
 	var cityEqFilter string
 	if len(cityEqF) > 0 {
 		cityEqFilter = string(cityEqF)
 		filters["city"] = 1
+		if cityMap[cityEqFilter] != nil {
+			suitableIndexes.Put(
+				cityMap[cityEqFilter].Size(),
+				namedIndex.Update([]byte("city"), cityMap[cityEqFilter]),
+			)
+		}
 	}
 
+	var selectedIndexName []byte
 	if suitableIndexes.Size() > 0 {
 		if _, shortestIndex := suitableIndexes.Min(); &shortestIndex != nil {
 			res := shortestIndex.(*NamedIndex)
 			index = res.index
+			selectedIndexName = res.name
 		}
 	}
 
@@ -113,7 +133,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 
 		if countryEqFilter != "" {
-			if account.Country == countryEqFilter {
+			if bytes.Equal(selectedIndexName, []byte("country")) || account.Country == countryEqFilter {
 				passedFilters += 1
 			} else {
 				continue
@@ -121,7 +141,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 
 		if cityEqFilter != "" {
-			if account.City == cityEqFilter {
+			if bytes.Equal(selectedIndexName, []byte("city ")) || account.City == cityEqFilter {
 				passedFilters += 1
 			} else {
 				continue
@@ -192,9 +212,9 @@ func (cr CompatibilityResult) getStatusValue() int {
 
 func (cr CompatibilityResult) getPremium() int {
 	if cr.hasPremiumNow {
-		return 1
+		return 0
 	} else {
-		return 2
+		return 1
 	}
 }
 
