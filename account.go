@@ -51,6 +51,7 @@ type Account struct {
 	emailDomain  string
 	phoneCode    int
 	birthYear    int
+	joinedYear   int
 	likes        map[int]LikesList
 }
 
@@ -106,6 +107,11 @@ func createAccount(acc Account) {
 	if acc.Birth != 0 {
 		tm := time.Unix(int64(acc.Birth), 0)
 		acc.birthYear = tm.Year()
+	}
+
+	if acc.Joined != 0 {
+		tm := time.Unix(int64(acc.Joined), 0)
+		acc.joinedYear = tm.Year()
 	}
 
 	if len(acc.TempLikes) > 0 {

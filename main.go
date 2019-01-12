@@ -80,8 +80,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	if isGetRequest {
 		if pathLen > 14 && path[14] == 'p' {
 			// group
-			//FIXME
-			ctx.Success("application/json", []byte("{\"groups\":[]}"))
+			groupHandler(ctx)
 			return
 		}
 		if pathLen > 15 && pathLen <= 17 && path[15] == 'r' {
