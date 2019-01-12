@@ -110,8 +110,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 			return
 		}
 		if pathLen == 16 && path[pathLen-2] == 's' {
-			//likes
-			ctx.Error("{}", 202)
+			updateLikesHandler(ctx)
 			return
 		}
 		if pathLen >= 12 && pathLen <= 21 && path[8] == 's' {

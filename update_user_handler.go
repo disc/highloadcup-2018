@@ -18,7 +18,7 @@ func updateUserHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(ctx.PostBody(), &data); err != nil {
-		ctx.Error(`{"err":"empty_req_fields"}`, 400)
+		ctx.Error(`{"err":"invalid_payload"}`, 400)
 	}
 
 	//TODO: Iterate by passed field
