@@ -105,13 +105,15 @@ func createAccount(acc Account) {
 	}
 
 	if acc.Birth != 0 {
+		loc, _ := time.LoadLocation("UTC")
 		tm := time.Unix(int64(acc.Birth), 0)
-		acc.birthYear = tm.Year()
+		acc.birthYear = tm.In(loc).Year()
 	}
 
 	if acc.Joined != 0 {
+		loc, _ := time.LoadLocation("UTC")
 		tm := time.Unix(int64(acc.Joined), 0)
-		acc.joinedYear = tm.Year()
+		acc.joinedYear = tm.In(loc).Year()
 	}
 
 	if len(acc.TempLikes) > 0 {
