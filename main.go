@@ -106,7 +106,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 
 	if isPostRequest {
 		if pathLen == 14 && path[pathLen-2] == 'w' {
-			newUserHandler(ctx)
+			createUserHandler(ctx)
 			return
 		}
 		// 404

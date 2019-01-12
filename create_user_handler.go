@@ -6,7 +6,7 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func newUserHandler(ctx *fasthttp.RequestCtx) {
+func createUserHandler(ctx *fasthttp.RequestCtx) {
 	acc := Account{}
 	if err := json.Unmarshal(ctx.PostBody(), &acc); err != nil {
 		ctx.Error("{}", 400)
@@ -91,11 +91,11 @@ func newUserHandler(ctx *fasthttp.RequestCtx) {
 	createAccount(acc)
 
 	// unique
-	successResponse(ctx)
+	createdSuccessResponse(ctx)
 	return
 }
 
-func successResponse(ctx *fasthttp.RequestCtx) {
+func createdSuccessResponse(ctx *fasthttp.RequestCtx) {
 	ctx.Response.Reset()
 	ctx.SetStatusCode(201)
 }
