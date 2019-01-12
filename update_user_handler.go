@@ -9,7 +9,7 @@ import (
 
 func updateUserHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	var account *Account
-	if value, found := accountMap.Get(accountId); !found {
+	if value, found := accountIndex.Get(accountId); !found {
 		ctx.Error(`{"err":"user_not_found"}`, 404)
 		return
 	} else {

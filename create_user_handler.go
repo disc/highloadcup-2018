@@ -71,7 +71,7 @@ func createUserHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	// unique id
-	if _, found := accountMap.Get(account.ID); found {
+	if _, found := accountIndex.Get(account.ID); found {
 		ctx.Error(`{"err":"id_already_exists"}`, 400)
 		return
 	}

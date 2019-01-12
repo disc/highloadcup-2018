@@ -181,7 +181,7 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	vmap := treemapPool.Get()
 	suitableIndexes := vmap.(*treemap.Map)
 
-	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
+	suitableIndexes.Put(accountIndex.Size(), namedIndex.Update([]byte("default"), accountIndex))
 
 	groupKeys := treeset.NewWithStringComparator()
 	keysF := ctx.QueryArgs().Peek("keys")
@@ -255,10 +255,11 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	var birthFilter int
 	if len(birthF) > 0 { //TODO: Add validation
 		birthFilter, _ = strconv.Atoi(string(birthF))
-		if birthYearMap[birthFilter] != nil && birthYearMap[birthFilter].Size() > 0 {
+		if birthYearIndex.Exists(birthFilter) {
+			currIndex := birthYearIndex.Get(birthFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				birthYearMap[birthFilter].Size(),
-				namedIndex.Update([]byte("birth_year"), birthYearMap[birthFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("birth_year"), currIndex),
 			)
 		} else {
 			emptyGroupResponse(ctx)

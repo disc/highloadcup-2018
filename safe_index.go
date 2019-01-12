@@ -7,7 +7,11 @@ type SafeIndex struct {
 	mux sync.Mutex
 }
 
-func (idx *SafeIndex) Exists(key string) bool {
+func NewSafeIndex() *SafeIndex {
+	return &SafeIndex{v: map[interface{}]interface{}{}}
+}
+
+func (idx *SafeIndex) Exists(key interface{}) bool {
 	idx.mux.Lock()
 	defer idx.mux.Unlock()
 
@@ -16,7 +20,7 @@ func (idx *SafeIndex) Exists(key string) bool {
 	return ok
 }
 
-func (idx *SafeIndex) Update(key string, value interface{}) {
+func (idx *SafeIndex) Update(key interface{}, value interface{}) {
 	idx.mux.Lock()
 
 	idx.v[key] = value
@@ -24,10 +28,18 @@ func (idx *SafeIndex) Update(key string, value interface{}) {
 	idx.mux.Unlock()
 }
 
-func (idx *SafeIndex) Delete(key string) {
+func (idx *SafeIndex) Delete(key interface{}) {
 	idx.mux.Lock()
 
 	delete(idx.v, key)
 
 	idx.mux.Unlock()
+}
+
+func (idx *SafeIndex) Get(key interface{}) interface{} {
+	idx.mux.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	defer idx.mux.Unlock()
+
+	return idx.v[key]
 }

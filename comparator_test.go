@@ -152,9 +152,9 @@ func TestComparator(t *testing.T) {
 		expectedData := compTest.expectedIDs
 
 		var list []*CompatibilityResult
-		requestedAccount, _ := accountMap.Get(compTest.id)
+		requestedAccount, _ := accountIndex.Get(compTest.id)
 
-		for _, acc := range accountMap.Values() {
+		for _, acc := range accountIndex.Values() {
 			account := acc.(*Account)
 
 			if requestedAccount.(*Account).Sex == account.Sex {
@@ -178,7 +178,7 @@ func TestComparator(t *testing.T) {
 
 		var expectedList []*CompatibilityResult
 		for _, accID := range expectedData {
-			account, _ := accountMap.Get(accID)
+			account, _ := accountIndex.Get(accID)
 
 			expectedList = append(expectedList, &CompatibilityResult{
 				id:              account.(*Account).ID,

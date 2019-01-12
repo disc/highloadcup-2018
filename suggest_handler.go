@@ -17,7 +17,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	}
 
 	var requestedAccount *Account
-	if account, ok := accountMap.Get(accountId); ok {
+	if account, ok := accountIndex.Get(accountId); ok {
 		requestedAccount = account.(*Account)
 	} else {
 		ctx.Error("{}", 404)
@@ -114,7 +114,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 				if _, exists := requestedAccount.likes[likeId]; exists {
 					continue
 				}
-				if suggestedLike, ok := accountMap.Get(likeId); ok {
+				if suggestedLike, ok := accountIndex.Get(likeId); ok {
 					suggestedAccount := suggestedLike.(*Account)
 					if suggestedAccount.Sex != requestedAccount.Sex {
 						// sort by like id from one user

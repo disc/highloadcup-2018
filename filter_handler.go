@@ -362,13 +362,14 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	vmap := treemapPool.Get()
 	suitableIndexes := vmap.(*treemap.Map)
-	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
+	suitableIndexes.Put(accountIndex.Size(), namedIndex.Update([]byte("default"), accountIndex))
 
 	if countryEqFilter != "" {
-		if countryMap[countryEqFilter] != nil && countryMap[countryEqFilter].Size() > 0 {
+		if countryIndex.Exists(countryEqFilter) {
+			currIndex := countryIndex.Get(countryEqFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				countryMap[countryEqFilter].Size(),
-				namedIndex.Update([]byte("country"), countryMap[countryEqFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("country"), currIndex),
 			)
 		} else {
 			// todo: return empty json
@@ -378,10 +379,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	if cityEqFilter != "" {
-		if cityMap[cityEqFilter] != nil && cityMap[cityEqFilter].Size() > 0 {
+		if cityIndex.Exists(cityEqFilter) {
+			currIndex := cityIndex.Get(cityEqFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				cityMap[cityEqFilter].Size(),
-				namedIndex.Update([]byte("city"), cityMap[cityEqFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("city"), currIndex),
 			)
 		} else {
 			// todo: return empty json
@@ -391,10 +393,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	if birthYearFilter > 0 {
-		if birthYearMap[birthYearFilter] != nil && birthYearMap[birthYearFilter].Size() > 0 {
+		if birthYearIndex.Exists(birthYearFilter) {
+			currIndex := birthYearIndex.Get(birthYearFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				birthYearMap[birthYearFilter].Size(),
-				namedIndex.Update([]byte("birth_year"), birthYearMap[birthYearFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("birth_year"), currIndex),
 			)
 		} else {
 			// todo: return empty json
@@ -404,10 +407,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	if snameEqFilter != "" {
-		if snameMap[snameEqFilter] != nil && snameMap[snameEqFilter].Size() > 0 {
+		if snameIndex.Exists(snameEqFilter) {
+			currIndex := snameIndex.Get(snameEqFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				snameMap[snameEqFilter].Size(),
-				namedIndex.Update([]byte("sname"), snameMap[snameEqFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("sname"), currIndex),
 			)
 		} else {
 			// todo: return empty json
@@ -417,10 +421,11 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	if fnameEqFilter != "" {
-		if fnameMap[fnameEqFilter] != nil && fnameMap[fnameEqFilter].Size() > 0 {
+		if !fnameIndex.Exists(fnameEqFilter) {
+			currIndex := fnameIndex.Get(fnameEqFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				fnameMap[fnameEqFilter].Size(),
-				namedIndex.Update([]byte("fname"), fnameMap[fnameEqFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("fname"), currIndex),
 			)
 		} else {
 			// todo: return empty json
@@ -433,14 +438,16 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		// get shortest index
 		var shortInterestsIndex *treemap.Map
 		for interest := range interestsContainsFilter {
-			if globalInterestsMap[interest] == nil {
+			if !interestsIndex.Exists(interestsIndex) {
 				continue
 			}
 			if shortInterestsIndex == nil {
-				shortInterestsIndex = globalInterestsMap[interest]
+				shortInterestsIndex = interestsIndex.Get(interest).(*treemap.Map)
 				continue
-			} else if shortInterestsIndex.Size() < globalInterestsMap[interest].Size() {
-				shortInterestsIndex = globalInterestsMap[interest]
+			}
+			currIndex := interestsIndex.Get(interest).(*treemap.Map)
+			if shortInterestsIndex.Size() < currIndex.Size() {
+				shortInterestsIndex = currIndex
 			}
 		}
 
@@ -456,14 +463,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		// get shortest index
 		var shortInterestsIndex *treemap.Map
 		for _, like := range likesContainsFilter {
-			if likeeIndex[like] == nil {
+			if likeeIndex.Get(like) == nil {
 				continue
 			}
+			currIndex := likeeIndex.Get(like).(*treemap.Map)
 			if shortInterestsIndex == nil {
-				shortInterestsIndex = likeeIndex[like]
+				shortInterestsIndex = currIndex
 				continue
-			} else if shortInterestsIndex.Size() < likeeIndex[like].Size() {
-				shortInterestsIndex = likeeIndex[like]
+			} else if shortInterestsIndex.Size() < currIndex.Size() {
+				shortInterestsIndex = currIndex
 			}
 		}
 

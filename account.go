@@ -20,17 +20,17 @@ var (
 	inverseFloat32Comparator = func(a, b interface{}) int {
 		return -utils.Float32Comparator(a, b)
 	}
-	accountMap         = treemap.NewWith(inverseIntComparator)
-	countryMap         = map[string]*treemap.Map{}
-	cityMap            = map[string]*treemap.Map{}
-	birthYearMap       = map[int]*treemap.Map{}
-	fnameMap           = map[string]*treemap.Map{}
-	snameMap           = map[string]*treemap.Map{}
-	sexIndex           = map[string]*treemap.Map{}
-	globalInterestsMap = map[string]*treemap.Map{}
-	likeeIndex         = map[int]*treemap.Map{} // who liked this user
-	emailIndex         = &SafeIndex{v: make(map[interface{}]interface{})}
-	phoneIndex         = &SafeIndex{v: make(map[interface{}]interface{})}
+	accountIndex   = treemap.NewWith(inverseIntComparator)
+	countryIndex   = NewSafeIndex()
+	cityIndex      = NewSafeIndex()
+	birthYearIndex = NewSafeIndex()
+	fnameIndex     = NewSafeIndex()
+	snameIndex     = NewSafeIndex()
+	sexIndex       = NewSafeIndex()
+	interestsIndex = NewSafeIndex()
+	likeeIndex     = NewSafeIndex() // who liked this user
+	emailIndex     = NewSafeIndex()
+	phoneIndex     = NewSafeIndex()
 )
 
 type Account struct {
@@ -66,7 +66,7 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 	if newValue, ok := changedData["interests"]; ok {
 		// delete old value from indexes
 		for _, v := range acc.Interests {
-			globalInterestsMap[v].Remove(acc.ID)
+			interestsIndex.Get(v).(*treemap.Map).Remove(acc.ID)
 		}
 
 		// set new value
@@ -74,10 +74,10 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 		for _, v := range newValue.([]interface{}) {
 			interest := v.(string)
 			acc.interestsMap[interest] = struct{}{}
-			if _, ok := globalInterestsMap[interest]; !ok {
-				globalInterestsMap[interest] = treemap.NewWith(inverseIntComparator)
+			if !interestsIndex.Exists(interest) {
+				interestsIndex.Update(interest, treemap.NewWith(inverseIntComparator))
 			}
-			globalInterestsMap[interest].Put(acc.ID, &acc)
+			interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, acc)
 		}
 		acc.Interests = nil
 	}
@@ -109,75 +109,91 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 	}
 
 	if newValue, ok := changedData["birth"]; ok {
+		// delete old value from indexes
+		if birthYearIndex.Exists(acc.birthYear) {
+			birthYearIndex.Get(acc.birthYear).(*treemap.Map).Remove(acc.ID)
+		}
+
 		// set new value
 		loc, _ := time.LoadLocation("UTC")
 		tm := time.Unix(newValue.(int64), 0)
 		acc.birthYear = tm.In(loc).Year()
+
+		if acc.birthYear > 0 {
+			if !birthYearIndex.Exists(acc.birthYear) {
+				birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseIntComparator))
+			}
+			birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, acc)
+		}
 	}
 
-	if newValue, ok := changedData["birth"]; ok {
+	if newValue, ok := changedData["joined"]; ok {
 		// set new value
 		loc, _ := time.LoadLocation("UTC")
 		tm := time.Unix(newValue.(int64), 0)
 		acc.joinedYear = tm.In(loc).Year()
 	}
 
+	//FIXME:
+	//if newValue, ok := changedData["likes"]; ok {
 	//
-	//if len(acc.TempLikes) > 0 {
-	//	acc.likes = make(map[int]LikesList, 0)
-	//	gjson.ParseBytes(acc.TempLikes).ForEach(func(key, value gjson.Result) bool {
-	//		like := value.Map()
-	//		likeId := int(like["id"].Int())
-	//
-	//		acc.likes[likeId] = append(acc.likes[likeId], int(like["ts"].Int()))
-	//
-	//		if _, ok := likeeIndex[likeId]; !ok {
-	//			likeeIndex[likeId] = treemap.NewWith(inverseIntComparator)
-	//		}
-	//		likeeIndex[likeId].Put(acc.ID, &acc)
-	//		return true
-	//	})
-	//	acc.TempLikes = nil
 	//}
-	//
-	//if acc.Country != "" {
-	//	if _, ok := countryMap[acc.Country]; !ok {
-	//		countryMap[acc.Country] = treemap.NewWith(inverseIntComparator)
-	//	}
-	//	countryMap[acc.Country].Put(acc.ID, &acc)
-	//}
-	//if acc.City != "" {
-	//	if _, ok := cityMap[acc.City]; !ok {
-	//		cityMap[acc.City] = treemap.NewWith(inverseIntComparator)
-	//	}
-	//	cityMap[acc.City].Put(acc.ID, &acc)
-	//}
-	//if acc.birthYear > 0 {
-	//	if _, ok := birthYearMap[acc.birthYear]; !ok {
-	//		birthYearMap[acc.birthYear] = treemap.NewWith(inverseIntComparator)
-	//	}
-	//	birthYearMap[acc.birthYear].Put(acc.ID, &acc)
-	//}
-	//if acc.Fname != "" {
-	//	if _, ok := fnameMap[acc.Fname]; !ok {
-	//		fnameMap[acc.Fname] = treemap.NewWith(inverseIntComparator)
-	//	}
-	//	fnameMap[acc.Fname].Put(acc.ID, &acc)
-	//}
-	//if acc.Sname != "" {
-	//	if _, ok := snameMap[acc.Sname]; !ok {
-	//		snameMap[acc.Sname] = treemap.NewWith(inverseIntComparator)
-	//	}
-	//	snameMap[acc.Sname].Put(acc.ID, &acc)
-	//}
-	//if acc.Sex != "" {
-	//	if _, ok := sexIndex[acc.Sex]; !ok {
-	//		sexIndex[acc.Sex] = treemap.NewWith(inverseIntComparator)
-	//	}
-	//	sexIndex[acc.Sex].Put(acc.ID, &acc)
-	//}
-	//
-	//accountMap.Put(acc.ID, &acc)
+
+	if newValue, ok := changedData["country"]; ok {
+		// delete old value from indexes
+		if countryIndex.Exists(acc.Country) {
+			countryIndex.Get(acc.Country).(*treemap.Map).Remove(acc.ID)
+		}
+
+		// set new value
+		acc.Country = newValue.(string)
+		if !countryIndex.Exists(acc.Country) {
+			countryIndex.Update(acc.Country, treemap.NewWith(inverseIntComparator))
+		}
+		countryIndex.Get(acc.Country).(*treemap.Map).Put(acc.ID, acc)
+	}
+
+	if newValue, ok := changedData["city"]; ok {
+		// delete old value from indexes
+		if cityIndex.Exists(acc.City) {
+			cityIndex.Get(acc.City).(*treemap.Map).Remove(acc.ID)
+		}
+
+		// set new value
+		acc.City = newValue.(string)
+		if !cityIndex.Exists(acc.City) {
+			cityIndex.Update(acc.City, treemap.NewWith(inverseIntComparator))
+		}
+		cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, acc)
+	}
+
+	if newValue, ok := changedData["fname"]; ok {
+		// delete old value from indexes
+		if fnameIndex.Exists(acc.Fname) {
+			fnameIndex.Get(acc.Fname).(*treemap.Map).Remove(acc.ID)
+		}
+
+		// set new value
+		acc.Fname = newValue.(string)
+		if !fnameIndex.Exists(acc.Fname) {
+			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseIntComparator))
+		}
+		fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, acc)
+	}
+
+	if newValue, ok := changedData["sname"]; ok {
+		// delete old value from indexes
+		if snameIndex.Exists(acc.Sname) {
+			snameIndex.Get(acc.Sname).(*treemap.Map).Remove(acc.ID)
+		}
+
+		// set new value
+		acc.Sname = newValue.(string)
+		if !snameIndex.Exists(acc.Sname) {
+			snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
+		}
+		snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc)
+	}
 }
 
 type LikesList []int
@@ -203,10 +219,10 @@ func NewAccount(acc Account) {
 		acc.interestsMap = make(map[string]struct{})
 		for _, interest := range acc.Interests {
 			acc.interestsMap[interest] = struct{}{}
-			if _, ok := globalInterestsMap[interest]; !ok {
-				globalInterestsMap[interest] = treemap.NewWith(inverseIntComparator)
+			if !interestsIndex.Exists(interest) {
+				interestsIndex.Update(interest, treemap.NewWith(inverseIntComparator))
 			}
-			globalInterestsMap[interest].Put(acc.ID, &acc)
+			interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, &acc)
 		}
 		acc.Interests = nil
 	}
@@ -216,7 +232,7 @@ func NewAccount(acc Account) {
 		if len(components) > 1 {
 			acc.emailDomain = components[1]
 		}
-		emailIndex.Update(acc.Email, struct{}{})
+		emailIndex.Update(acc.Email, 1)
 	}
 
 	if acc.Phone != "" {
@@ -247,53 +263,53 @@ func NewAccount(acc Account) {
 
 			acc.likes[likeId] = append(acc.likes[likeId], int(like["ts"].Int()))
 
-			if _, ok := likeeIndex[likeId]; !ok {
-				likeeIndex[likeId] = treemap.NewWith(inverseIntComparator)
+			if !likeeIndex.Exists(likeId) {
+				likeeIndex.Update(likeId, treemap.NewWith(inverseIntComparator))
 			}
-			likeeIndex[likeId].Put(acc.ID, &acc)
+			likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, &acc)
 			return true
 		})
 		acc.TempLikes = nil
 	}
 
 	if acc.Country != "" {
-		if _, ok := countryMap[acc.Country]; !ok {
-			countryMap[acc.Country] = treemap.NewWith(inverseIntComparator)
+		if !countryIndex.Exists(acc.Country) {
+			countryIndex.Update(acc.Country, treemap.NewWith(inverseIntComparator))
 		}
-		countryMap[acc.Country].Put(acc.ID, &acc)
+		countryIndex.Get(acc.Country).(*treemap.Map).Put(acc.ID, &acc)
 	}
 	if acc.City != "" {
-		if _, ok := cityMap[acc.City]; !ok {
-			cityMap[acc.City] = treemap.NewWith(inverseIntComparator)
+		if !cityIndex.Exists(acc.City) {
+			cityIndex.Update(acc.City, treemap.NewWith(inverseIntComparator))
 		}
-		cityMap[acc.City].Put(acc.ID, &acc)
+		cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, &acc)
 	}
 	if acc.birthYear > 0 {
-		if _, ok := birthYearMap[acc.birthYear]; !ok {
-			birthYearMap[acc.birthYear] = treemap.NewWith(inverseIntComparator)
+		if !birthYearIndex.Exists(acc.birthYear) {
+			birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseIntComparator))
 		}
-		birthYearMap[acc.birthYear].Put(acc.ID, &acc)
+		birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, &acc)
 	}
 	if acc.Fname != "" {
-		if _, ok := fnameMap[acc.Fname]; !ok {
-			fnameMap[acc.Fname] = treemap.NewWith(inverseIntComparator)
+		if !fnameIndex.Exists(acc.Fname) {
+			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseIntComparator))
 		}
-		fnameMap[acc.Fname].Put(acc.ID, &acc)
+		fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, &acc)
 	}
 	if acc.Sname != "" {
-		if _, ok := snameMap[acc.Sname]; !ok {
-			snameMap[acc.Sname] = treemap.NewWith(inverseIntComparator)
+		if !snameIndex.Exists(acc.Sname) {
+			snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
 		}
-		snameMap[acc.Sname].Put(acc.ID, &acc)
+		snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, &acc)
 	}
 	if acc.Sex != "" {
-		if _, ok := sexIndex[acc.Sex]; !ok {
-			sexIndex[acc.Sex] = treemap.NewWith(inverseIntComparator)
+		if !sexIndex.Exists(acc.Sex) {
+			sexIndex.Update(acc.Sex, treemap.NewWith(inverseIntComparator))
 		}
-		sexIndex[acc.Sex].Put(acc.ID, &acc)
+		sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, &acc)
 	}
 
-	accountMap.Put(acc.ID, &acc)
+	accountIndex.Put(acc.ID, &acc)
 }
 
 func calculateSimilarityForUser(account *Account) *treemap.Map {
@@ -304,7 +320,7 @@ func calculateSimilarityForUser(account *Account) *treemap.Map {
 	userSimilarityMap := treemap.NewWith(inverseFloat32Comparator)
 	for likeId, tsList := range user1Likes {
 		ts1 := tsList.getTimestamp()
-		it := likeeIndex[likeId].Iterator()
+		it := likeeIndex.Get(likeId).(*treemap.Map).Iterator()
 		for it.Next() {
 			acc2 := it.Value().(*Account)
 			ts2 := acc2.likes[likeId].getTimestamp()

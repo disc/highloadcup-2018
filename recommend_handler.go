@@ -18,7 +18,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	}
 
 	var requestedAccount *Account
-	if account, ok := accountMap.Get(accountId); ok {
+	if account, ok := accountIndex.Get(accountId); ok {
 		requestedAccount = account.(*Account)
 	} else {
 		ctx.Error("{}", 404)
@@ -53,9 +53,11 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	suitableIndexes := vmap.(*treemap.Map)
 	switch requestedAccount.Sex {
 	case "m":
-		suitableIndexes.Put(sexIndex["f"].Size(), namedIndex.Update([]byte("sex_f"), sexIndex["f"]))
+		femaleIndex := sexIndex.Get("f").(*treemap.Map)
+		suitableIndexes.Put(femaleIndex.Size(), namedIndex.Update([]byte("sex_f"), femaleIndex))
 	case "f":
-		suitableIndexes.Put(sexIndex["m"].Size(), namedIndex.Update([]byte("sex_m"), sexIndex["m"]))
+		maleIndex := sexIndex.Get("m").(*treemap.Map)
+		suitableIndexes.Put(maleIndex.Size(), namedIndex.Update([]byte("sex_m"), maleIndex))
 	}
 
 	var countryEqF []byte
@@ -85,10 +87,11 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	if len(countryEqF) > 0 {
 		countryEqFilter = string(countryEqF)
 		filters["country"] = 1
-		if countryMap[countryEqFilter] != nil {
+		if countryIndex.Exists(countryEqFilter) {
+			currIndex := countryIndex.Get(countryEqFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				countryMap[countryEqFilter].Size(),
-				namedIndex.Update([]byte("country"), countryMap[countryEqFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("country"), currIndex),
 			)
 		}
 	}
@@ -96,10 +99,11 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	if len(cityEqF) > 0 {
 		cityEqFilter = string(cityEqF)
 		filters["city"] = 1
-		if cityMap[cityEqFilter] != nil {
+		if cityIndex.Exists(cityEqFilter) {
+			currIndex := cityIndex.Get(cityEqFilter).(*treemap.Map)
 			suitableIndexes.Put(
-				cityMap[cityEqFilter].Size(),
-				namedIndex.Update([]byte("city"), cityMap[cityEqFilter]),
+				currIndex.Size(),
+				namedIndex.Update([]byte("city"), currIndex),
 			)
 		}
 	}
