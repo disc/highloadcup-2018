@@ -7,7 +7,7 @@ deploy: build
 	docker tag hlcup stor.highloadcup.ru/accounts/rebel_butterfly
 	docker push stor.highloadcup.ru/accounts/rebel_butterfly
 
-run: app-unzip
+run: app-unzip app-use-options
 	./app
 app-unzip:
 	mkdir -p $$(pwd)/data/ > /dev/null
