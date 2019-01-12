@@ -231,15 +231,14 @@ func (s compatibilitySort) Less(i, j int) bool {
 	acc2 := s[j]
 	result := 0
 
-	if result == 0 {
-		if acc1.getPremium() < acc2.getPremium() {
-			return true
-		} else if acc1.getPremium() > acc2.getPremium() {
-			return false
-		} else {
-			result = 0
-		}
+	if acc1.getPremium() < acc2.getPremium() {
+		return true
+	} else if acc1.getPremium() > acc2.getPremium() {
+		return false
+	} else {
+		result = 0
 	}
+
 	if result == 0 {
 		if acc1.getStatusValue() < acc2.getStatusValue() {
 			return true
