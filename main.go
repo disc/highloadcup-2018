@@ -74,6 +74,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	path := ctx.Path()
 
 	isGetRequest := ctx.IsGet()
+	isPostRequest := ctx.IsPost()
 
 	pathLen := len(path)
 
@@ -101,6 +102,15 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		// 404
 		ctx.Error("{}", 404)
 		return
+	}
+
+	if isPostRequest {
+		if pathLen == 14 && path[pathLen-2] == 'w' {
+			newUserHandler(ctx)
+			return
+		}
+		// 404
+		ctx.Error("{}", 404)
 	}
 }
 

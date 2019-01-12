@@ -29,6 +29,8 @@ var (
 	sexIndex           = map[string]*treemap.Map{}
 	globalInterestsMap = map[string]*treemap.Map{}
 	likeeIndex         = map[int]*treemap.Map{} // who liked this user
+	emailIndex         = map[string]struct{}{}
+	phoneIndex         = map[string]struct{}{}
 )
 
 type Account struct {
@@ -95,6 +97,7 @@ func createAccount(acc Account) {
 		if len(components) > 0 {
 			acc.emailDomain = components[1]
 		}
+		emailIndex[acc.Email] = struct{}{}
 	}
 
 	if acc.Phone != "" {
@@ -102,6 +105,7 @@ func createAccount(acc Account) {
 		if phoneCode, err := strconv.Atoi(phoneCodeStr); err == nil {
 			acc.phoneCode = phoneCode
 		}
+		phoneIndex[acc.Phone] = struct{}{}
 	}
 
 	if acc.Birth != 0 {
