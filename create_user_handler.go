@@ -2,63 +2,67 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/valyala/fasthttp"
 )
 
 func createUserHandler(ctx *fasthttp.RequestCtx) {
-	acc := Account{}
-	if err := json.Unmarshal(ctx.PostBody(), &acc); err != nil {
+	account := Account{}
+	if err := json.Unmarshal(ctx.PostBody(), &account); err != nil {
 		ctx.Error("{}", 400)
 		return
 	}
 
-	if acc.ID == 0 || acc.Email == "" {
+	//TODO: Iterate by passed field
+
+	if account.ID == 0 || account.Email == "" {
 		ctx.Error(`{"err":"empty_req_fields"}`, 400)
 		return
 	}
 
-	if len(acc.Email) > 100 {
+	if len(account.Email) > 100 {
 		ctx.Error(`{"err":"email_too_long"}`, 400)
 		return
 	}
 
-	if len(acc.Fname) > 50 || len(acc.Sname) > 50 {
+	if !strings.Contains(account.Email, "@") {
+		ctx.Error(`{"err":"incorrect_email_long"}`, 400)
+		return
+	}
+
+	if len(account.Fname) > 50 || len(account.Sname) > 50 {
 		ctx.Error(`{"err":"fname_sname_too_long"}`, 400)
 		return
 	}
 
-	if len(acc.Phone) > 16 {
+	if len(account.Phone) > 16 {
 		ctx.Error(`{"err":"phone_too_long"}`, 400)
 		return
 	}
 
-	if len(acc.Sex) > 0 && acc.Sex != "m" && acc.Sex != "f" {
+	if len(account.Sex) > 0 && account.Sex != "m" && account.Sex != "f" {
 		ctx.Error(`{"err":"invalid_sex"}`, 400)
 		return
 	}
 
-	// todo birth validate
-
-	if len(acc.Country) > 50 {
+	if len(account.Country) > 50 {
 		ctx.Error(`{"err":"country_too_long"}`, 400)
 		return
 	}
 
-	if len(acc.City) > 50 {
+	if len(account.City) > 50 {
 		ctx.Error(`{"err":"city_too_long"}`, 400)
 		return
 	}
 
-	//todo joined validate
-
-	if len(acc.Status) > 0 && acc.Status != "свободны" && acc.Status != "заняты" && acc.Status != "всё сложно" {
+	if len(account.Status) > 0 && account.Status != "свободны" && account.Status != "заняты" && account.Status != "всё сложно" {
 		ctx.Error(`{"err":"invalid_status"}`, 400)
 		return
 	}
 
-	if len(acc.Interests) > 0 {
-		for _, v := range acc.Interests {
+	if len(account.Interests) > 0 {
+		for _, v := range account.Interests {
 			if len(v) > 100 {
 				ctx.Error(`{"err":"interest_too_long"}`, 400)
 				return
@@ -66,29 +70,26 @@ func createUserHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	//todo premium validate
-
-	// todo likes validate
-
 	// unique id
-	if _, found := accountMap.Get(acc.ID); found {
+	if _, found := accountMap.Get(account.ID); found {
 		ctx.Error(`{"err":"id_already_exists"}`, 400)
 		return
 	}
 
 	// unique email
-	if _, found := emailIndex[acc.Email]; found {
+	if emailIndex.Exists(account.Email) {
 		ctx.Error(`{"err":"email_already_exists"}`, 400)
 		return
 	}
 
 	// unique phone
-	if _, found := phoneIndex[acc.Phone]; found {
+	if phoneIndex.Exists(account.Phone) {
 		ctx.Error(`{"err":"phone_already_exists"}`, 400)
 		return
 	}
 
-	createAccount(acc)
+	// creating in goroutine
+	go NewAccount(account)
 
 	// unique
 	createdSuccessResponse(ctx)

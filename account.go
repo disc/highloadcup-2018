@@ -29,8 +29,8 @@ var (
 	sexIndex           = map[string]*treemap.Map{}
 	globalInterestsMap = map[string]*treemap.Map{}
 	likeeIndex         = map[int]*treemap.Map{} // who liked this user
-	emailIndex         = map[string]struct{}{}
-	phoneIndex         = map[string]struct{}{}
+	emailIndex         = &SafeIndex{v: make(map[interface{}]interface{})}
+	phoneIndex         = &SafeIndex{v: make(map[interface{}]interface{})}
 )
 
 type Account struct {
@@ -61,6 +61,125 @@ func (acc Account) hasActivePremium(now int64) bool {
 	return acc.Premium["start"] <= int(now) && acc.Premium["finish"] > int(now)
 }
 
+// Update user
+func (acc *Account) Update(changedData map[string]interface{}) {
+	if newValue, ok := changedData["interests"]; ok {
+		// delete old value from indexes
+		for _, v := range acc.Interests {
+			globalInterestsMap[v].Remove(acc.ID)
+		}
+
+		// set new value
+		acc.interestsMap = make(map[string]struct{})
+		for _, v := range newValue.([]interface{}) {
+			interest := v.(string)
+			acc.interestsMap[interest] = struct{}{}
+			if _, ok := globalInterestsMap[interest]; !ok {
+				globalInterestsMap[interest] = treemap.NewWith(inverseIntComparator)
+			}
+			globalInterestsMap[interest].Put(acc.ID, &acc)
+		}
+		acc.Interests = nil
+	}
+
+	if newValue, ok := changedData["email"]; ok {
+		// delete old value from indexes
+		emailIndex.Delete(acc.Email)
+
+		// set new value
+		acc.Email = newValue.(string)
+		components := strings.Split(acc.Email, "@")
+		if len(components) > 1 {
+			acc.emailDomain = components[1]
+		}
+		emailIndex.Update(acc.Email, struct{}{})
+	}
+
+	if newValue, ok := changedData["phone"]; ok {
+		// delete old value from indexes
+		phoneIndex.Delete(acc.Phone)
+
+		// set new value
+		acc.Phone = newValue.(string)
+		phoneCodeStr := strings.SplitN(strings.SplitN(acc.Phone, "(", 2)[1], ")", 2)[0]
+		if phoneCode, err := strconv.Atoi(phoneCodeStr); err == nil {
+			acc.phoneCode = phoneCode
+		}
+		phoneIndex.Update(acc.Phone, struct{}{})
+	}
+
+	if newValue, ok := changedData["birth"]; ok {
+		// set new value
+		loc, _ := time.LoadLocation("UTC")
+		tm := time.Unix(newValue.(int64), 0)
+		acc.birthYear = tm.In(loc).Year()
+	}
+
+	if newValue, ok := changedData["birth"]; ok {
+		// set new value
+		loc, _ := time.LoadLocation("UTC")
+		tm := time.Unix(newValue.(int64), 0)
+		acc.joinedYear = tm.In(loc).Year()
+	}
+
+	//
+	//if len(acc.TempLikes) > 0 {
+	//	acc.likes = make(map[int]LikesList, 0)
+	//	gjson.ParseBytes(acc.TempLikes).ForEach(func(key, value gjson.Result) bool {
+	//		like := value.Map()
+	//		likeId := int(like["id"].Int())
+	//
+	//		acc.likes[likeId] = append(acc.likes[likeId], int(like["ts"].Int()))
+	//
+	//		if _, ok := likeeIndex[likeId]; !ok {
+	//			likeeIndex[likeId] = treemap.NewWith(inverseIntComparator)
+	//		}
+	//		likeeIndex[likeId].Put(acc.ID, &acc)
+	//		return true
+	//	})
+	//	acc.TempLikes = nil
+	//}
+	//
+	//if acc.Country != "" {
+	//	if _, ok := countryMap[acc.Country]; !ok {
+	//		countryMap[acc.Country] = treemap.NewWith(inverseIntComparator)
+	//	}
+	//	countryMap[acc.Country].Put(acc.ID, &acc)
+	//}
+	//if acc.City != "" {
+	//	if _, ok := cityMap[acc.City]; !ok {
+	//		cityMap[acc.City] = treemap.NewWith(inverseIntComparator)
+	//	}
+	//	cityMap[acc.City].Put(acc.ID, &acc)
+	//}
+	//if acc.birthYear > 0 {
+	//	if _, ok := birthYearMap[acc.birthYear]; !ok {
+	//		birthYearMap[acc.birthYear] = treemap.NewWith(inverseIntComparator)
+	//	}
+	//	birthYearMap[acc.birthYear].Put(acc.ID, &acc)
+	//}
+	//if acc.Fname != "" {
+	//	if _, ok := fnameMap[acc.Fname]; !ok {
+	//		fnameMap[acc.Fname] = treemap.NewWith(inverseIntComparator)
+	//	}
+	//	fnameMap[acc.Fname].Put(acc.ID, &acc)
+	//}
+	//if acc.Sname != "" {
+	//	if _, ok := snameMap[acc.Sname]; !ok {
+	//		snameMap[acc.Sname] = treemap.NewWith(inverseIntComparator)
+	//	}
+	//	snameMap[acc.Sname].Put(acc.ID, &acc)
+	//}
+	//if acc.Sex != "" {
+	//	if _, ok := sexIndex[acc.Sex]; !ok {
+	//		sexIndex[acc.Sex] = treemap.NewWith(inverseIntComparator)
+	//	}
+	//	sexIndex[acc.Sex].Put(acc.ID, &acc)
+	//}
+	//
+	//accountMap.Put(acc.ID, &acc)
+}
+
 type LikesList []int
 
 func (list LikesList) getTimestamp() int {
@@ -79,7 +198,7 @@ func (list LikesList) getTimestamp() int {
 	return ts
 }
 
-func createAccount(acc Account) {
+func NewAccount(acc Account) {
 	if len(acc.Interests) > 0 {
 		acc.interestsMap = make(map[string]struct{})
 		for _, interest := range acc.Interests {
@@ -94,10 +213,10 @@ func createAccount(acc Account) {
 
 	if acc.Email != "" {
 		components := strings.Split(acc.Email, "@")
-		if len(components) > 0 {
+		if len(components) > 1 {
 			acc.emailDomain = components[1]
 		}
-		emailIndex[acc.Email] = struct{}{}
+		emailIndex.Update(acc.Email, struct{}{})
 	}
 
 	if acc.Phone != "" {
@@ -105,7 +224,7 @@ func createAccount(acc Account) {
 		if phoneCode, err := strconv.Atoi(phoneCodeStr); err == nil {
 			acc.phoneCode = phoneCode
 		}
-		phoneIndex[acc.Phone] = struct{}{}
+		phoneIndex.Update(acc.Phone, struct{}{})
 	}
 
 	if acc.Birth != 0 {

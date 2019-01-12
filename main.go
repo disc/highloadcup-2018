@@ -109,6 +109,15 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 			createUserHandler(ctx)
 			return
 		}
+		if pathLen == 16 && path[pathLen-2] == 's' {
+			//likes
+			ctx.Error("{}", 202)
+			return
+		}
+		if pathLen >= 12 && pathLen <= 21 && path[8] == 's' {
+			updateUserHandler(ctx, parseAccountId(path))
+			return
+		}
 		// 404
 		ctx.Error("{}", 404)
 	}
@@ -159,7 +168,7 @@ func parseAccountsMap(fileBytes []byte) {
 	json.Unmarshal(fileBytes, &accounts)
 
 	for _, account := range accounts.Accounts {
-		createAccount(account)
+		NewAccount(account)
 	}
 }
 
