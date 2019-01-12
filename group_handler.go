@@ -175,6 +175,14 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	vnidxpool := namedIndexPool.Get()
+	namedIndex := vnidxpool.(*NamedIndex)
+
+	vmap := treemapPool.Get()
+	suitableIndexes := vmap.(*treemap.Map)
+
+	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
+
 	groupKeys := treeset.NewWithStringComparator()
 	keysF := ctx.QueryArgs().Peek("keys")
 	hasInterestsKey := false
@@ -247,6 +255,15 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	var birthFilter int
 	if len(birthF) > 0 { //TODO: Add validation
 		birthFilter, _ = strconv.Atoi(string(birthF))
+		if birthYearMap[birthFilter] != nil && birthYearMap[birthFilter].Size() > 0 {
+			suitableIndexes.Put(
+				birthYearMap[birthFilter].Size(),
+				namedIndex.Update([]byte("birth_year"), birthYearMap[birthFilter]),
+			)
+		} else {
+			emptyGroupResponse(ctx)
+			return
+		}
 	}
 
 	joinedF := ctx.QueryArgs().Peek("joined")
@@ -269,13 +286,6 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	//todo: add premium filter support?
 
 	var index *treemap.Map
-
-	vnidxpool := namedIndexPool.Get()
-	namedIndex := vnidxpool.(*NamedIndex)
-
-	vmap := treemapPool.Get()
-	suitableIndexes := vmap.(*treemap.Map)
-	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
 	//TODO: Select index by filter
 
 	var selectedIndexName []byte
