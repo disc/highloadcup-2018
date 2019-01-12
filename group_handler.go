@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emirpasic/gods/sets/treeset"
+
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/valyala/fasthttp"
 )
@@ -152,6 +154,14 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	}
 	_ = allowedParams
 
+	allowedKeys := map[string]struct{}{
+		"sex":       {},
+		"status":    {},
+		"interests": {},
+		"country":   {},
+		"city":      {},
+	}
+
 	var limit int
 	var err error
 	if limit, err = strconv.Atoi(string(ctx.QueryArgs().Peek("limit"))); err != nil || limit <= 0 {
@@ -165,14 +175,98 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	var groupKeys = make(map[string]struct{})
+	groupKeys := treeset.NewWithStringComparator()
 	keysF := ctx.QueryArgs().Peek("keys")
+	hasInterestsKey := false
 	if len(keysF) > 0 {
-		// TODO: use bytes?
+		valid := true
 		for _, v := range strings.Split(string(keysF), ",") {
-			groupKeys[v] = struct{}{}
+			if _, ok := allowedKeys[v]; ok {
+				groupKeys.Add(v)
+			} else {
+				valid = false
+				break
+			}
 		}
+		if !valid {
+			ctx.Error("{}", 400)
+			return
+		}
+		hasInterestsKey = groupKeys.Contains("interests")
 	}
+
+	sexF := ctx.QueryArgs().Peek("sex")
+	var sexFilter string
+	if len(sexF) > 0 { //TODO: Add validation
+		sexFilter = string(sexF)
+	}
+
+	emailF := ctx.QueryArgs().Peek("email")
+	var emailFilter string
+	if len(emailF) > 0 { //TODO: Add validation
+		emailFilter = string(emailF)
+	}
+
+	statusF := ctx.QueryArgs().Peek("status")
+	var statusFilter string
+	if len(statusF) > 0 { //TODO: Add validation
+		statusFilter = string(statusF)
+	}
+
+	fnameF := ctx.QueryArgs().Peek("fname")
+	var fnameFilter string
+	if len(fnameF) > 0 { //TODO: Add validation
+		fnameFilter = string(fnameF)
+	}
+
+	snameF := ctx.QueryArgs().Peek("sname")
+	var snameFilter string
+	if len(snameF) > 0 { //TODO: Add validation
+		snameFilter = string(snameF)
+	}
+
+	phoneF := ctx.QueryArgs().Peek("phone")
+	var phoneFilter string
+	if len(phoneF) > 0 { //TODO: Add validation
+		phoneFilter = string(phoneF)
+	}
+
+	countryF := ctx.QueryArgs().Peek("country")
+	var countryFilter string
+	if len(countryF) > 0 { //TODO: Add validation
+		countryFilter = string(countryF)
+	}
+
+	cityF := ctx.QueryArgs().Peek("city")
+	var cityFilter string
+	if len(cityF) > 0 { //TODO: Add validation
+		cityFilter = string(cityF)
+	}
+
+	birthF := ctx.QueryArgs().Peek("birth")
+	var birthFilter int
+	if len(birthF) > 0 { //TODO: Add validation
+		birthFilter, _ = strconv.Atoi(string(birthF))
+	}
+
+	joinedF := ctx.QueryArgs().Peek("joined")
+	var joinedFilter int
+	if len(joinedF) > 0 { //TODO: Add validation
+		joinedFilter, _ = strconv.Atoi(string(joinedF))
+	}
+
+	interestsF := ctx.QueryArgs().Peek("interests")
+	var interestsFilter string
+	if len(interestsF) > 0 { //TODO: Add validation
+		interestsFilter = string(interestsF)
+	}
+
+	likesF := ctx.QueryArgs().Peek("likes")
+	var likesFilter int
+	if len(likesF) > 0 { //TODO: Add validation
+		likesFilter, _ = strconv.Atoi(string(likesF))
+	}
+	//todo: add premium filter support?
 
 	var index *treemap.Map
 
@@ -182,6 +276,7 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	vmap := treemapPool.Get()
 	suitableIndexes := vmap.(*treemap.Map)
 	suitableIndexes.Put(accountMap.Size(), namedIndex.Update([]byte("default"), accountMap))
+	//TODO: Select index by filter
 
 	var selectedIndexName []byte
 	if suitableIndexes.Size() > 0 {
@@ -197,8 +292,6 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	namedIndexPool.Put(vnidxpool)
 	treemapPool.Put(vmap)
 
-	conditionsMap := map[string]interface{}{}
-
 	var foundGroups = make(map[string]int)
 
 	if index != nil {
@@ -207,36 +300,97 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 			account := it.Value().(*Account)
 
 			// conditions
-			// TODO: get more conditions from filter handler
-			if value, ok := conditionsMap["joined"]; ok {
-				if account.joinedYear != value.(int) {
-					continue
-				}
-			}
-			if value, ok := conditionsMap["birth"]; ok {
-				if account.birthYear != value.(int) {
+			if len(sexFilter) > 0 { //TODO: move len from loop
+				if account.Sex != sexFilter {
 					continue
 				}
 			}
 
+			if len(emailFilter) > 0 {
+				if account.Email != emailFilter {
+					continue
+				}
+			}
+
+			if len(statusFilter) > 0 {
+				if account.Status != statusFilter {
+					continue
+				}
+			}
+
+			if len(fnameFilter) > 0 {
+				if account.Fname != fnameFilter {
+					continue
+				}
+			}
+
+			if len(snameFilter) > 0 {
+				if account.Sname != snameFilter {
+					continue
+				}
+			}
+
+			if len(phoneFilter) > 0 {
+				if account.Phone != phoneFilter {
+					continue
+				}
+			}
+
+			if len(countryFilter) > 0 {
+				if account.Country != countryFilter {
+					continue
+				}
+			}
+
+			if len(cityFilter) > 0 {
+				if account.City != cityFilter {
+					continue
+				}
+			}
+
+			if birthFilter != 0 {
+				if account.birthYear != birthFilter {
+					continue
+				}
+			}
+
+			if joinedFilter != 0 {
+				if account.joinedYear != joinedFilter {
+					continue
+				}
+			}
+
+			if interestsFilter != "" {
+				if _, ok := account.interestsMap[interestsFilter]; !ok {
+					continue
+				}
+			}
+
+			if likesFilter != 0 {
+				if _, ok := account.likes[likesFilter]; !ok {
+					continue
+				}
+			}
+
+			//TODO: Premium?
+
+			// key grouping
 			var resultKey string
-			for keyName := range groupKeys {
+			groupKeys.Each(func(index int, value interface{}) {
+				keyName := value.(string)
 				switch keyName {
 				case "sex":
 					resultKey += "_" + keyName + ":" + account.Sex
 				case "status":
 					resultKey += "_" + keyName + ":" + account.Status
 				case "country":
-					if account.Country != "" {
-						resultKey += "_" + keyName + ":" + account.Country
-					}
+					resultKey += "_" + keyName + ":" + account.Country
 				case "city":
-					if account.City != "" {
-						resultKey += "_" + keyName + ":" + account.City
-					}
+					resultKey += "_" + keyName + ":" + account.City
 				}
-			}
-			if _, ok := groupKeys["interests"]; ok {
+			})
+
+			if hasInterestsKey {
 				for interest := range account.interestsMap {
 					interestsKey := resultKey + "_interests:" + interest
 					foundGroups[interestsKey] += 1
@@ -261,7 +415,11 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 			sort.Sort(found)
 		}
 
-		ctx.Success("application/json", prepareGroupResponseBytes(found[:limit]))
+		if limit > 0 && len(found) > limit {
+			found = found[:limit]
+		}
+
+		ctx.Success("application/json", prepareGroupResponseBytes(found))
 		return
 	}
 

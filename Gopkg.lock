@@ -18,7 +18,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:386c33490f2b66dd9594b91a4260f037fba26afb8be0d6ab90829348fc4a72dc"
+  digest = "1:b5f1cd4fa9838cd8d80dc0fd6a5c0041edbfc7412390770b2f56e826e1c955be"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
@@ -26,6 +26,8 @@
     "lists/arraylist",
     "maps",
     "maps/treemap",
+    "sets",
+    "sets/treeset",
     "trees",
     "trees/redblacktree",
     "utils",
@@ -185,6 +187,7 @@
     "github.com/Sirupsen/logrus",
     "github.com/emirpasic/gods/lists/arraylist",
     "github.com/emirpasic/gods/maps/treemap",
+    "github.com/emirpasic/gods/sets/treeset",
     "github.com/emirpasic/gods/utils",
     "github.com/gorilla/handlers",
     "github.com/mkevac/debugcharts",
