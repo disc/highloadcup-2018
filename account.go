@@ -349,22 +349,26 @@ func calculateSimilarityForUser(account *Account) *treemap.Map {
 		return nil
 	}
 	userSimilarityMap := treemap.NewWith(inverseFloat32Comparator)
+	var similarMap = map[*Account]float32{}
+
 	for likeId, tsList := range user1Likes {
 		ts1 := tsList.getTimestamp()
 		it := likeeIndex.Get(likeId).(*treemap.Map).Iterator()
+
 		for it.Next() {
-			acc2 := it.Value().(*Account)
-			ts2 := acc2.likes[likeId].getTimestamp()
-			var similarity float32
+			similarAcc := it.Value().(*Account)
+			ts2 := similarAcc.likes[likeId].getTimestamp()
+
 			if ts1 == ts2 {
-				similarity += 1
+				similarMap[similarAcc] += 1
 			} else {
-				similarity += float32(1 / math.Abs(float64(ts1-ts2)))
-			}
-			if similarity > 0 {
-				userSimilarityMap.Put(similarity, acc2)
+				similarMap[similarAcc] += float32(1 / math.Abs(float64(ts1-ts2)))
 			}
 		}
+	}
+
+	for similarAcc, similarity := range similarMap {
+		userSimilarityMap.Put(similarity, similarAcc)
 	}
 
 	return userSimilarityMap
@@ -397,20 +401,3 @@ func updateLikes(data json.RawMessage) {
 		return true
 	})
 }
-
-//if len(acc.TempLikes) > 0 {
-//acc.likes = make(map[int]LikesList, 0)
-//gjson.ParseBytes(acc.TempLikes).ForEach(func(key, value gjson.Result) bool {
-//like := value.Map()
-//likeId := int(like["id"].Int())
-//
-//acc.likes[likeId] = append(acc.likes[likeId], int(like["ts"].Int()))
-//
-//if !likeeIndex.Exists(likeId) {
-//likeeIndex.Update(likeId, treemap.NewWith(inverseIntComparator))
-//}
-//likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, &acc)
-//return true
-//})
-//acc.TempLikes = nil
-//}
