@@ -79,40 +79,44 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	pathLen := len(path)
 
 	if isGetRequest {
-		if pathLen > 14 && path[14] == 'p' {
-			// group
+		// /accounts/group/
+		if pathLen == 16 && path[14] == 'p' {
 			groupHandler(ctx)
 			return
 		}
-		if pathLen > 15 && pathLen <= 17 && path[15] == 'r' {
-			// filter
+		// /accounts/filter/
+		if pathLen == 17 && path[15] == 'r' {
 			filterHandler(ctx)
 			return
 		}
+		// /accounts/<id>/suggest/
 		if pathLen >= 20 && pathLen <= 30 && path[pathLen-2] == 't' {
-			// suggest
 			suggestHandler(ctx, parseAccountId(path))
 			return
 		}
-		if pathLen > 23 && pathLen <= 31 && path[pathLen-2] == 'd' {
-			// recommend
+		// /accounts/<id>/recommend/
+		if pathLen >= 21 && pathLen <= 31 && path[pathLen-2] == 'd' {
 			recommendHandler(ctx, parseAccountId(path))
 			return
 		}
+
 		// 404
 		ctx.Error("{}", 404)
 		return
 	}
 
 	if isPostRequest {
+		// /accounts/new/
 		if pathLen == 14 && path[pathLen-2] == 'w' {
 			createUserHandler(ctx)
 			return
 		}
+		// /accounts/likes/
 		if pathLen == 16 && path[pathLen-2] == 's' {
 			updateLikesHandler(ctx)
 			return
 		}
+		// /accounts/<id>/
 		if pathLen >= 12 && pathLen <= 21 && path[8] == 's' {
 			updateUserHandler(ctx, parseAccountId(path))
 			return
