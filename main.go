@@ -3,13 +3,14 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/valyala/fastjson"
 
 	"net/http"
 	_ "net/http/pprof"
@@ -29,6 +30,10 @@ var (
 	log = logrus.New()
 
 	isDebugMode = os.Getenv("DEBUG")
+
+	dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
+
+	p fastjson.Parser
 )
 
 func main() {
@@ -45,9 +50,10 @@ func main() {
 
 	log.Println("Started")
 
-	parseDataDir("./data/")
+	parseDataDir(dataDir)
 
 	log.Println("Data has been parsed completely")
+	log.Println("Accounts len", len(accountMapIndex))
 
 	runtime.GC()
 	log.Println("GC has been finished")
@@ -142,14 +148,27 @@ func parseAccountId(path []byte) int {
 }
 
 func parseFile(filename string) {
-	rawData, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Println(err.Error())
-		os.Exit(1)
-	}
-
 	if strings.LastIndex(filename, "accounts_") != -1 {
-		parseAccountsMap(rawData)
+		rawData, err := ioutil.ReadFile(filename)
+		if err != nil {
+			log.Println(err.Error())
+			os.Exit(1)
+		}
+
+		jsonValue, _ := p.ParseBytes(rawData)
+
+		for _, jsonData := range jsonValue.GetArray("accounts") {
+			id := jsonData.GetInt("id")
+			acc := &Account{ID: id}
+			_ = acc
+			accountMapIndex[acc.ID] = acc // 400Mb cost
+		}
+
+		//if time.Now().Second()%2 == 0 {
+		//	runtime.GC()
+		//}
+
+		//parseAccountsMap(rawData)
 	} else if strings.LastIndex(filename, "options.txt") != -1 {
 		parseOptions(filename)
 	}
@@ -163,16 +182,24 @@ func parseDataDir(dirPath string) {
 }
 
 func parseAccountsMap(fileBytes []byte) {
-	type jsonKey struct {
-		Accounts []Account
-	}
+	//type jsonKey struct {
+	//	Accounts []Account
+	//}
+	//
+	//var accounts jsonKey
+	//json.Unmarshal(fileBytes, &accounts)
 
-	var accounts jsonKey
-	json.Unmarshal(fileBytes, &accounts)
+	// 20 seconds: 2.12Gb peak, 1.31Gb result
+	//sc.InitBytes(fileBytes)
+	//
+	//for sc.Next() {
+	//	//v := sc.Value()
+	//	//_ = v
+	//}
 
-	for _, account := range accounts.Accounts {
-		NewAccount(account)
-	}
+	//for _, account := range accounts.Accounts {
+	//	NewAccount(account)
+	//}
 }
 
 func parseOptions(filename string) {

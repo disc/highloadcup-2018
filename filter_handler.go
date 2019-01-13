@@ -366,7 +366,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 
 	if countryEqFilter != "" {
 		if countryIndex.Exists(countryEqFilter) {
-			currIndex := countryIndex.Get(countryEqFilter).(*treemap.Map)
+			currIndex := countryIndex.Get(countryEqFilter)
 			suitableIndexes.Put(
 				currIndex.Size(),
 				namedIndex.Update([]byte("country"), currIndex),

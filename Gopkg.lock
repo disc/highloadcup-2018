@@ -162,6 +162,17 @@
   version = "v20180529"
 
 [[projects]]
+  digest = "1:76d6f73987e6a434bd697070fa4a4dcc3424f1205134228743079c0cd89de9ef"
+  name = "github.com/valyala/fastjson"
+  packages = [
+    ".",
+    "fastfloat",
+  ]
+  pruneopts = "UT"
+  revision = "f1ad9dd9ae161b64bfedf7164d0af99e5f37dfd3"
+  version = "v1.3.0"
+
+[[projects]]
   branch = "master"
   digest = "1:38f553aff0273ad6f367cb0a0f8b6eecbaef8dc6cb8b50e57b6a81c1d5b1e332"
   name = "golang.org/x/crypto"
@@ -193,6 +204,7 @@
     "github.com/mkevac/debugcharts",
     "github.com/tidwall/gjson",
     "github.com/valyala/fasthttp",
+    "github.com/valyala/fastjson",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

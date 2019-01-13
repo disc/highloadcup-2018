@@ -88,7 +88,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		countryEqFilter = string(countryEqF)
 		filters["country"] = 1
 		if countryIndex.Exists(countryEqFilter) {
-			currIndex := countryIndex.Get(countryEqFilter).(*treemap.Map)
+			currIndex := countryIndex.Get(countryEqFilter)
 			suitableIndexes.Put(
 				currIndex.Size(),
 				namedIndex.Update([]byte("country"), currIndex),
