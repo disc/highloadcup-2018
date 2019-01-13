@@ -63,6 +63,7 @@ func (acc Account) hasActivePremium(now int64) bool {
 
 // Update user
 func (acc *Account) Update(changedData map[string]interface{}) {
+	// 11 (w/o likes)
 	if newValue, ok := changedData["interests"]; ok {
 		// delete old value from indexes
 		for _, v := range acc.Interests {
@@ -85,6 +86,7 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 	if newValue, ok := changedData["email"]; ok {
 		// delete old value from indexes
 		emailIndex.Delete(acc.Email)
+		acc.emailDomain = ""
 
 		// set new value
 		acc.Email = newValue.(string)
@@ -95,9 +97,15 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 		emailIndex.Update(acc.Email, struct{}{})
 	}
 
+	if newValue, ok := changedData["status"]; ok {
+		// set new value
+		acc.Status = newValue.(string)
+	}
+
 	if newValue, ok := changedData["phone"]; ok {
 		// delete old value from indexes
 		phoneIndex.Delete(acc.Phone)
+		acc.phoneCode = 0
 
 		// set new value
 		acc.Phone = newValue.(string)
@@ -114,9 +122,10 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 			birthYearIndex.Get(acc.birthYear).(*treemap.Map).Remove(acc.ID)
 		}
 
+		acc.Birth = newValue.(int)
 		// set new value
 		loc, _ := time.LoadLocation("UTC")
-		tm := time.Unix(newValue.(int64), 0)
+		tm := time.Unix(int64(acc.Birth), 0)
 		acc.birthYear = tm.In(loc).Year()
 
 		if acc.birthYear > 0 {
@@ -129,14 +138,14 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 
 	if newValue, ok := changedData["joined"]; ok {
 		// set new value
+		acc.Joined = newValue.(int)
 		loc, _ := time.LoadLocation("UTC")
-		tm := time.Unix(newValue.(int64), 0)
+		tm := time.Unix(int64(acc.Joined), 0)
 		acc.joinedYear = tm.In(loc).Year()
 	}
 
 	//FIXME:
 	//if newValue, ok := changedData["likes"]; ok {
-	//
 	//}
 
 	if newValue, ok := changedData["country"]; ok {
@@ -193,6 +202,28 @@ func (acc *Account) Update(changedData map[string]interface{}) {
 			snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
 		}
 		snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc)
+	}
+
+	if newValue, ok := changedData["sex"]; ok {
+		// delete old value from indexes
+		if sexIndex.Exists(acc.Sex) {
+			sexIndex.Get(acc.Sex).(*treemap.Map).Remove(acc.ID)
+		}
+
+		// set new value
+		acc.Sex = newValue.(string)
+		if !sexIndex.Exists(acc.Sex) {
+			sexIndex.Update(acc.Sex, treemap.NewWith(inverseIntComparator))
+		}
+		sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, acc)
+	}
+
+	if newValue, ok := changedData["premium"]; ok {
+		acc.Premium = make(map[string]int, 0)
+		// set new value
+		data := newValue.(map[string]interface{})
+		acc.Premium["start"] = int(data["start"].(float64))
+		acc.Premium["finish"] = int(data["finish"].(float64))
 	}
 }
 
