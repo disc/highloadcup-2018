@@ -33,7 +33,7 @@ var (
 
 	dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
 
-	p fastjson.Parser
+	pp fastjson.ParserPool
 )
 
 func main() {
@@ -155,18 +155,22 @@ func parseFile(filename string) {
 			os.Exit(1)
 		}
 
-		jsonValue, _ := p.ParseBytes(rawData)
+		p := pp.Get()
 
-		for _, jsonData := range jsonValue.GetArray("accounts") {
-			id := jsonData.GetInt("id")
-			acc := &Account{ID: id}
-			_ = acc
-			accountMapIndex[acc.ID] = acc // 400Mb cost
+		v, _ := p.ParseBytes(rawData)
+		//if err != nil {
+		//	log.Fatalf("unexpected error: %s", err)
+		//}
+
+		for _, jsonData := range v.GetArray("accounts") {
+			NewAccountFromJson(jsonData)
 		}
 
-		//if time.Now().Second()%2 == 0 {
-		//	runtime.GC()
-		//}
+		pp.Put(p)
+
+		if time.Now().Second()%3 == 0 {
+			runtime.GC()
+		}
 
 		//parseAccountsMap(rawData)
 	} else if strings.LastIndex(filename, "options.txt") != -1 {

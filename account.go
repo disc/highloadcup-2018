@@ -24,7 +24,7 @@ var (
 		return -utils.Float32Comparator(a, b)
 	}
 	accountIndex      = treemap.NewWith(inverseIntComparator)
-	accountMapIndex   = make(map[int]*Account, 0)
+	accountMapIndex   = map[int]*Account{}
 	countryIndex      = NewSafeTreemapIndex()
 	cityIndex         = NewSafeIndex()
 	birthYearIndex    = NewSafeIndex()
@@ -46,7 +46,6 @@ var (
 
 type Account struct {
 	ID        int             `json:"id"`
-	IDp       *int            `json:"id"`
 	Email     string          `json:"email"`
 	Fname     string          `json:"fname"`
 	Sname     string          `json:"sname"`
@@ -57,9 +56,9 @@ type Account struct {
 	City      string          `json:"city"`
 	Joined    int             `json:"joined"`
 	Status    string          `json:"status"`
-	Interests []string        // temp data, cleared when user parsed
+	Interests []string        //FIXME: remove this property temp data, cleared when user parsed
 	Premium   map[string]int  `json:"premium"`
-	TempLikes json.RawMessage `json:"-"` // temp data, cleared when user parsed
+	TempLikes json.RawMessage `json:"-"` //FIXME: remove this property temp data, cleared when user parsed
 
 	interestsMap map[string]struct{}
 	emailDomain  string
@@ -269,15 +268,16 @@ func NewAccountFromJson(jsonValue *fastjson.Value) {
 	acc := &Account{}
 	acc.ID = jsonValue.GetInt("id")
 
-	acc.interestsMap = make(map[string]struct{})
-	for _, v := range jsonValue.GetArray("interests") {
-		interest := v.String()
-		acc.interestsMap[interest] = struct{}{}
+	//acc.interestsMap = make(map[string]struct{})
+	//for _, v := range jsonValue.GetArray("interests") {
+	//	interest := v.String()
+	//	acc.interestsMap[interest] = struct{}{}
+	//
+	//	interestsMapIndex[interest] = append(interestsMapIndex[interest], acc) // 909
+	//}
 
-		//interestsMapIndex[interest] = append(interestsMapIndex[interest], acc)
-	}
-
-	accountMapIndex[acc.ID] = acc
+	accountIndex.Put(acc.ID, acc) // 394
+	//accountMapIndex[acc.ID] = acc // 341
 
 	//if newValue, ok := changedData["email"]; ok {
 	//	// delete old value from indexes
