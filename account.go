@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -55,6 +56,15 @@ type Account struct {
 	birthYear    int
 	joinedYear   int
 	likes        map[int]LikesList
+
+	sync.Mutex
+}
+
+func (acc *Account) AppendLike(likeeId int, likeTs int) {
+	acc.Lock()
+	defer acc.Unlock()
+
+	acc.likes[likeeId] = append(acc.likes[likeeId], likeTs)
 }
 
 func (acc Account) hasActivePremium(now int64) bool {
@@ -292,7 +302,7 @@ func NewAccount(acc Account) {
 			like := value.Map()
 			likeId := int(like["id"].Int())
 
-			acc.likes[likeId] = append(acc.likes[likeId], int(like["ts"].Int()))
+			acc.AppendLike(likeId, int(like["ts"].Int()))
 
 			if !likeeIndex.Exists(likeId) {
 				likeeIndex.Update(likeId, treemap.NewWith(inverseIntComparator))
@@ -388,7 +398,7 @@ func updateLikes(data json.RawMessage) {
 				likerAcc.likes = make(map[int]LikesList, 0)
 			}
 
-			likerAcc.likes[likeeId] = append(likerAcc.likes[likeeId], int(like["ts"].Int()))
+			likerAcc.AppendLike(likeeId, int(like["ts"].Int()))
 
 			if !likeeIndex.Exists(likeeId) {
 				likeeIndex.Update(likeeId, treemap.NewWith(inverseIntComparator))
