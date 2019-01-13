@@ -377,24 +377,19 @@ func updateLikes(data json.RawMessage) {
 			likerId := int(like["liker"].Int())
 			likeeId := int(like["likee"].Int())
 
-			liker, found := accountIndex.Get(likerId)
-			if !found {
-				a := "error"
-				_ = a
+			liker, _ := accountIndex.Get(likerId)
 
-				return true
+			likerAcc := liker.(*Account)
+			if likerAcc.likes == nil {
+				likerAcc.likes = make(map[int]LikesList, 0)
 			}
 
-			if liker.(*Account).likes == nil {
-				liker.(*Account).likes = make(map[int]LikesList, 0)
-			}
-
-			liker.(*Account).likes[likeeId] = append(liker.(*Account).likes[likeeId], int(like["ts"].Int()))
+			likerAcc.likes[likeeId] = append(likerAcc.likes[likeeId], int(like["ts"].Int()))
 
 			if !likeeIndex.Exists(likeeId) {
 				likeeIndex.Update(likeeId, treemap.NewWith(inverseIntComparator))
 			}
-			likeeIndex.Get(likeeId).(*treemap.Map).Put(liker.(*Account).ID, liker.(*Account))
+			likeeIndex.Get(likeeId).(*treemap.Map).Put(likerAcc.ID, likerAcc)
 
 			return true
 		})
