@@ -1,97 +1,104 @@
 package main
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/valyala/fasthttp"
 )
 
 func createUserHandler(ctx *fasthttp.RequestCtx) {
-	account := Account{}
-	if err := json.Unmarshal(ctx.PostBody(), &account); err != nil {
+	p := pp.Get()
+
+	jsonData, err := p.ParseBytes(ctx.PostBody())
+
+	if err != nil {
 		ctx.Error("{}", 400)
 		return
 	}
 
 	//TODO: Iterate by passed field
 
-	if account.ID == 0 || account.Email == "" {
+	email := string(jsonData.Get("email").GetStringBytes())
+	if jsonData.Get("id").GetInt() == 0 || email == "" {
 		ctx.Error(`{"err":"empty_req_fields"}`, 400)
 		return
 	}
 
-	if len(account.Email) > 100 {
+	if len(email) > 100 {
 		ctx.Error(`{"err":"email_too_long"}`, 400)
 		return
 	}
 
-	if !strings.Contains(account.Email, "@") {
+	if !strings.Contains(email, "@") {
 		ctx.Error(`{"err":"incorrect_email_long"}`, 400)
 		return
 	}
 
-	if len(account.Fname) > 50 || len(account.Sname) > 50 {
+	if len(jsonData.Get("fname").GetStringBytes()) > 50 || len(jsonData.Get("sname").GetStringBytes()) > 50 {
 		ctx.Error(`{"err":"fname_sname_too_long"}`, 400)
 		return
 	}
 
-	if len(account.Phone) > 16 {
+	phone := string(jsonData.Get("phone").GetStringBytes())
+	if len(phone) > 16 {
 		ctx.Error(`{"err":"phone_too_long"}`, 400)
 		return
 	}
 
-	if len(account.Sex) > 0 && account.Sex != "m" && account.Sex != "f" {
+	sex := string(jsonData.Get("sex").GetStringBytes())
+	if len(sex) > 0 && sex != "m" && sex != "f" {
 		ctx.Error(`{"err":"invalid_sex"}`, 400)
 		return
 	}
 
-	if len(account.Country) > 50 {
+	if len(jsonData.Get("country").GetStringBytes()) > 50 {
 		ctx.Error(`{"err":"country_too_long"}`, 400)
 		return
 	}
 
-	if len(account.City) > 50 {
+	if len(jsonData.Get("city").GetStringBytes()) > 50 {
 		ctx.Error(`{"err":"city_too_long"}`, 400)
 		return
 	}
 
-	if len(account.Status) > 0 && account.Status != "свободны" && account.Status != "заняты" && account.Status != "всё сложно" {
+	status := string(jsonData.Get("status").GetStringBytes())
+	if len(status) > 0 && status != "свободны" && status != "заняты" && status != "всё сложно" {
 		ctx.Error(`{"err":"invalid_status"}`, 400)
 		return
 	}
 
-	if len(account.Interests) > 0 {
-		for _, v := range account.Interests {
-			if len(v) > 100 {
-				ctx.Error(`{"err":"interest_too_long"}`, 400)
-				return
-			}
+	for _, v := range jsonData.GetArray("interests") {
+		if len(v.GetStringBytes()) > 100 {
+			ctx.Error(`{"err":"interest_too_long"}`, 400)
+			return
 		}
 	}
 
+	//todo: premium?
+
 	// unique id
-	if _, found := accountIndex.Get(account.ID); found {
+	if _, found := accountIndex.Get(jsonData.GetInt("id")); found {
 		ctx.Error(`{"err":"id_already_exists"}`, 400)
 		return
 	}
 
 	// unique email
-	if emailIndex.Exists(account.Email) {
+	if emailIndex.Exists(email) {
 		ctx.Error(`{"err":"email_already_exists"}`, 400)
 		return
 	}
 
 	// unique phone
-	if phoneIndex.Exists(account.Phone) {
+	if phoneIndex.Exists(phone) {
 		ctx.Error(`{"err":"phone_already_exists"}`, 400)
 		return
 	}
 
-	// creating in goroutine
-	go NewAccount(account)
+	pp.Put(p)
 
-	// unique
+	// creating in goroutine
+	go NewAccountFromByte(ctx.PostBody())
+
 	createdSuccessResponse(ctx)
 	return
 }

@@ -31,7 +31,8 @@ var (
 
 	isDebugMode = os.Getenv("DEBUG")
 
-	dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
+	//dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
+	dataDir = "./data/"
 
 	pp fastjson.ParserPool
 )
@@ -53,7 +54,7 @@ func main() {
 	parseDataDir(dataDir)
 
 	log.Println("Data has been parsed completely")
-	log.Println("Accounts len", len(accountMapIndex))
+	log.Println("Accounts amount:", accountIndex.Size())
 
 	runtime.GC()
 	log.Println("GC has been finished")
@@ -62,19 +63,6 @@ func main() {
 		log.Fatalf("Error in ListenAndServe: %s", err)
 	}
 }
-
-/*
-GET:
-/accounts/filter/
-/accounts/group/
-/accounts/<id>/recommend/
-/accounts/<id>/suggest/
-
-POST:
-/accounts/new/
-/accounts/<id>/
-/accounts/likes/
-*/
 
 func requestHandler(ctx *fasthttp.RequestCtx) {
 	path := ctx.Path()
