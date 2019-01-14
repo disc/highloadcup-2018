@@ -63,6 +63,35 @@ type Account struct {
 	sync.Mutex
 }
 
+//13000000 // MaxInt16
+//uint8  : 0 to 255
+//uint16 : 0 to 65535
+//uint32 : 0 to 4294967295
+//uint64 : 0 to 18446744073709551615
+type AccountUpdated struct {
+	ID      uint32            `json:"id"`
+	Email   string            `json:"email"`
+	Fname   string            `json:"fname"`
+	Sname   string            `json:"sname"`
+	Phone   string            `json:"phone"`
+	Sex     byte              `json:"sex"`
+	Birth   uint32            `json:"birth"`
+	Country byte              `json:"country"` // get value from map
+	City    byte              `json:"city"`    // get value from map
+	Joined  uint8             `json:"joined"`
+	Status  byte              `json:"status"` // get value from map
+	Premium map[string]uint32 `json:"premium"`
+
+	interestsMap map[byte]struct{}
+	emailDomain  byte
+	phoneCode    uint16
+	birthYear    uint16
+	joinedYear   uint16
+	likes        map[uint32]LikesList
+
+	sync.Mutex
+}
+
 func (acc *Account) AppendLike(likeeId int, likeTs int) {
 	acc.Lock()
 	defer acc.Unlock()
