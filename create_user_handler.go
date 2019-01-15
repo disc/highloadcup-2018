@@ -83,13 +83,13 @@ func createUserHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	// unique email
-	if emailIndex.Exists(email) {
+	if emailsDict.GetId(email) > 0 {
 		ctx.Error(`{"err":"email_already_exists"}`, 400)
 		return
 	}
 
 	// unique phone
-	if phoneIndex.Exists(phone) {
+	if phonesDict.GetId(phone) > 0 {
 		ctx.Error(`{"err":"phone_already_exists"}`, 400)
 		return
 	}

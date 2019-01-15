@@ -31,8 +31,8 @@ var (
 
 	isDebugMode = os.Getenv("DEBUG")
 
-	//dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
-	dataDir = "./data/"
+	dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
+	//dataDir = "./data/"
 
 	pp fastjson.ParserPool
 )
@@ -156,9 +156,9 @@ func parseFile(filename string) {
 
 		pp.Put(p)
 
-		if time.Now().Second()%3 == 0 {
-			runtime.GC()
-		}
+		//if time.Now().Second()%3 == 0 {
+		//	runtime.GC()
+		//}
 
 		//parseAccountsMap(rawData)
 	} else if strings.LastIndex(filename, "options.txt") != -1 {
@@ -169,6 +169,7 @@ func parseFile(filename string) {
 func parseDataDir(dirPath string) {
 	files, _ := ioutil.ReadDir(dirPath)
 	for _, f := range files {
+		log.Println("Started parsing file", f.Name())
 		parseFile(dirPath + f.Name())
 	}
 }
