@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -63,54 +62,6 @@ type Account struct {
 	sync.Mutex
 }
 
-func NewStringDictionary() *StringDictionary {
-	return &StringDictionary{
-		v: make(map[string]uint8, 0),
-		k: make(map[uint8]string, 0),
-	}
-}
-
-type StringDictionary struct {
-	v map[string]uint8
-	k map[uint8]string
-	sync.Mutex
-}
-
-func (d *StringDictionary) Add(value string) uint8 {
-	d.Lock()
-	defer d.Unlock()
-
-	if id, ok := d.v[value]; ok {
-		return id
-	}
-
-	id := uint8(len(d.v)) + 1
-	d.v[value] = id
-	d.k[id] = value
-
-	return id
-}
-
-func (d *StringDictionary) Get(id uint8) string {
-	d.Lock()
-	defer d.Unlock()
-
-	if value, ok := d.k[id]; ok {
-		return value
-	}
-	return ""
-}
-
-func (d *StringDictionary) GetId(value string) uint8 {
-	d.Lock()
-	defer d.Unlock()
-
-	if id, ok := d.v[value]; ok {
-		return id
-	}
-	return 0
-}
-
 var statusDict = &StringDictionary{
 	v: map[string]uint8{
 		"свободны":   1,
@@ -143,7 +94,50 @@ var snamesDict = NewStringDictionary()
 var emailsDict = NewStringDictionary()
 var phonesDict = NewStringDictionary()
 
-var likesMap map[*AccountUpdated]map[uint32]LikesList
+type LikesMap struct {
+	v map[uint32]map[uint32][2]uint32
+	sync.Mutex
+}
+
+func (l *LikesMap) AppendLike(likerId uint32, likeeId uint32, likeTs uint32) {
+	l.Lock()
+	defer l.Unlock()
+
+	if l.v[likerId] == nil {
+		l.v[likerId] = map[uint32][2]uint32{}
+	}
+
+	arr := l.v[likerId][likeeId]
+
+	if arr[0] == 0 {
+		arr[0] = likeTs
+	} else if arr[1] == 0 {
+		arr[1] = likeTs
+	} else {
+		panic("More than two TS for one like")
+	}
+}
+
+func (l LikesMap) getTimestamp(likerId uint32, likeeId uint32) uint32 {
+	var ts uint32
+
+	var total uint32
+	var length uint8
+	for _, value := range l.v[likerId][likeeId] {
+		if value != 0 {
+			total += value
+			length += 1
+		}
+
+	}
+	ts = total / uint32(length)
+
+	return ts
+}
+
+var likesMap = &LikesMap{
+	v: map[uint32]map[uint32][2]uint32{},
+}
 
 //interestsMap map[byte]struct{}
 
@@ -170,19 +164,12 @@ type AccountUpdated struct {
 	City         byte
 	Joined       uint32
 	JoinedYear   uint16
-	EmailDomain  byte
-	PhoneCode    byte
-	Premium      map[string]uint32
+	EmailDomain  byte              // fixme remove and use index instead
+	PhoneCode    byte              // fixme remove and use index instead
+	Premium      map[string]uint32 // todo: move from user to global index
 	InterestsMap map[uint8]struct{}
 
 	sync.Mutex
-}
-
-func (acc *Account) AppendLike(likeeId int, likeTs int) {
-	acc.Lock()
-	defer acc.Unlock()
-
-	acc.likes[likeeId] = append(acc.likes[likeeId], likeTs)
 }
 
 func (acc Account) hasActivePremium(now int64) bool {
@@ -529,23 +516,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 	}
 }
 
-type LikesList []int
-
-func (list LikesList) getTimestamp() int {
-	var ts int
-
-	if len(list) > 1 {
-		var total = 0
-		for _, value := range list {
-			total += value
-		}
-		ts = total / int(len(list))
-	} else {
-		ts = list[0]
-	}
-
-	return ts
-}
+type LikesList [2]uint32
 
 func NewAccountFromByte(data []byte) {
 	p := pp.Get()
@@ -567,10 +538,11 @@ func NewAccountFromJson(jsonValue *fastjson.Value) {
 		interestId := interestsDict.Add(interest)
 		acc.InterestsMap[interestId] = struct{}{}
 
-		//if !interestsIndex.Exists(interestId) {
-		//	interestsIndex.Update(interestId, treemap.NewWith(inverseUint32Comparator))
-		//}
-		//interestsIndex.Get(interestId).(*treemap.Map).Put(acc.ID, acc)
+		if !interestsIndex.Exists(interestId) {
+			interestsIndex.Update(interestId, treemap.NewWith(inverseUint32Comparator))
+		}
+		// 498 no extra indexes
+		interestsIndex.Get(interestId).(*treemap.Map).Put(acc.ID, acc) // 765 def+this index
 	}
 
 	emailStr := string(jsonValue.GetStringBytes("email"))
@@ -589,77 +561,64 @@ func NewAccountFromJson(jsonValue *fastjson.Value) {
 		acc.Phone = phonesDict.Add(phoneStr)
 		phoneCodeStr := strings.SplitN(strings.SplitN(phoneStr, "(", 2)[1], ")", 2)[0]
 		acc.PhoneCode = phoneCodesDict.Add(phoneCodeStr)
-		//phoneIndex.Update(acc.Phone, struct{}{})
 	}
 
 	acc.Birth = int32(jsonValue.GetInt("birth"))
 	acc.BirthYear = uint16(time.Unix(int64(acc.Birth), 0).In(time.UTC).Year())
 
 	if acc.BirthYear > 0 {
-		//if !birthYearIndex.Exists(acc.BirthYear) {
-		//	birthYearIndex.Update(acc.BirthYear, treemap.NewWith(inverseUint32Comparator))
-		//}
-		//birthYearIndex.Get(acc.BirthYear).(*treemap.Map).Put(acc.ID, acc)
+		if !birthYearIndex.Exists(acc.BirthYear) {
+			birthYearIndex.Update(acc.BirthYear, treemap.NewWith(inverseUint32Comparator))
+		}
+		// 86
+		birthYearIndex.Get(acc.BirthYear).(*treemap.Map).Put(acc.ID, acc) // 851 def+this index
 	}
 
 	acc.Joined = uint32(jsonValue.GetUint("joined"))
 	acc.JoinedYear = uint16(time.Unix(int64(acc.Joined), 0).In(time.UTC).Year())
 
-	//acc.likes = make(map[int]LikesList, 0)
-	//for _, v := range jsonValue.GetArray("likes") {
-	//	likeId := v.GetInt("id")
-	//	ts := v.GetInt("ts")
-	//
-	//	// TODO: ignore 0 in like id / ts
-	//	if likeId == 0 || ts == 0 {
-	//		continue
-	//	}
-	//
-	//	acc.AppendLike(likeId, ts)
-	//
-	//	if !likeeIndex.Exists(likeId) {
-	//		likeeIndex.Update(likeId, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, acc)
-	//}
-
 	acc.Country = countriesDict.Add(string(jsonValue.GetStringBytes("country")))
-	//if acc.Country > 0 {
-	//	if !countryIndex.Exists(acc.Country) {
-	//		countryIndex.Update(acc.Country, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	countryIndex.Get(acc.Country).Put(acc.ID, acc)
-	//}
+	if acc.Country > 0 {
+		if !countryIndex.Exists(acc.Country) {
+			countryIndex.Update(acc.Country, treemap.NewWith(inverseUint32Comparator))
+		}
+		// 90
+		countryIndex.Get(acc.Country).Put(acc.ID, acc) // 941
+	}
 
 	acc.City = citiesDict.Add(string(jsonValue.GetStringBytes("city")))
-	//if acc.City > 0 {
-	//	if !cityIndex.Exists(acc.City) {
-	//		cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, acc)
-	//}
+	if acc.City > 0 {
+		if !cityIndex.Exists(acc.City) {
+			cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
+		}
+		// 88
+		cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, acc) // 1029
+	}
 
 	acc.Fname = fnamesDict.Add(string(jsonValue.GetStringBytes("fname")))
-	//if acc.Fname > 0 {
-	//	if !fnameIndex.Exists(acc.Fname) {
-	//		fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, acc)
-	//}
+	if acc.Fname > 0 {
+		if !fnameIndex.Exists(acc.Fname) {
+			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
+		}
+		// 88
+		fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, acc) // 1117
+	}
 
 	acc.Sname = snamesDict.Add(string(jsonValue.GetStringBytes("sname")))
-	//if acc.Sname > 0 {
-	//	if !snameIndex.Exists(acc.Sname) {
-	//		snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc)
-	//}
+	if acc.Sname > 0 {
+		if !snameIndex.Exists(acc.Sname) {
+			snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
+		}
+		// 87
+		snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc) // 1204
+	}
 
 	acc.Sex = sexDict.GetId(string(jsonValue.GetStringBytes("sex")))
-	//if !sexIndex.Exists(acc.Sex) {
-	//	sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
-	//}
-	//sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, acc)
+	if !sexIndex.Exists(acc.Sex) {
+		sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
+	}
+	// 89
+	sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, acc) // 1293
 
 	premiumObj := jsonValue.GetObject("premium")
 	if premiumObj != nil && premiumObj.Len() > 0 {
@@ -669,108 +628,24 @@ func NewAccountFromJson(jsonValue *fastjson.Value) {
 		acc.Premium["finish"] = uint32(premiumObj.Get("finish").GetUint())
 	}
 
-	accountIndex.Put(acc.ID, acc) // 394 // 498 with dictionaries
-	//accountMapIndex[acc.ID] = acc // 341
-}
+	for _, v := range jsonValue.GetArray("likes") {
+		likeId := v.GetUint("id")
+		ts := v.GetUint("ts")
 
-func NewAccount(acc Account) {
-	//if len(acc.Interests) > 0 {
-	//	acc.interestsMap = make(map[string]struct{})
-	//	for _, interest := range acc.Interests {
-	//		acc.interestsMap[interest] = struct{}{}
-	//		if !interestsIndex.Exists(interest) {
-	//			interestsIndex.Update(interest, treemap.NewWith(inverseUint32Comparator))
-	//		}
-	//		interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, &acc)
-	//	}
-	//	acc.Interests = nil
-	//}
-	//
-	//if acc.Email != "" {
-	//	components := strings.Split(acc.Email, "@")
-	//	if len(components) > 1 {
-	//		acc.emailDomain = components[1]
-	//	}
-	//	emailIndex.Update(acc.Email, 1)
-	//}
-	//
-	//if acc.Phone != "" {
-	//	phoneCodeStr := strings.SplitN(strings.SplitN(acc.Phone, "(", 2)[1], ")", 2)[0]
-	//	if phoneCode, err := strconv.Atoi(phoneCodeStr); err == nil {
-	//		acc.phoneCode = phoneCode
-	//	}
-	//	phoneIndex.Update(acc.Phone, struct{}{})
-	//}
-	//
-	//if acc.Birth != 0 {
-	//	loc, _ := time.LoadLocation("UTC")
-	//	tm := time.Unix(int64(acc.Birth), 0)
-	//	acc.birthYear = tm.In(loc).Year()
-	//}
-	//
-	//if acc.Joined != 0 {
-	//	loc, _ := time.LoadLocation("UTC")
-	//	tm := time.Unix(int64(acc.Joined), 0)
-	//	acc.joinedYear = tm.In(loc).Year()
-	//}
-	//
-	//if len(acc.TempLikes) > 0 {
-	//	acc.likes = make(map[int]LikesList, 0)
-	//	//gjson.ParseBytes(acc.TempLikes).ForEach(func(key, value gjson.Result) bool {
-	//	//	like := value.Map()
-	//	//	likeId := int(like["id"].Int())
-	//	//
-	//	//	acc.AppendLike(likeId, int(like["ts"].Int()))
-	//	//
-	//	//	if !likeeIndex.Exists(likeId) {
-	//	//		likeeIndex.Update(likeId, treemap.NewWith(inverseUint32Comparator))
-	//	//	}
-	//	//	likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, &acc)
-	//	//	return true
-	//	//})
-	//	acc.TempLikes = nil
-	//}
-
-	if acc.Country != "" {
-		vmap := inversedTreemapPool.Get()
-		if !countryIndex.Exists(acc.Country) {
-			countryIndex.Update(acc.Country, vmap.(*treemap.Map))
+		// TODO: ignore 0 in like id / ts
+		if likeId == 0 || ts == 0 {
+			continue
 		}
-		countryIndex.Get(acc.Country).Put(acc.ID, &acc)
-		inversedTreemapPool.Put(vmap)
-	}
-	//if acc.City != "" {
-	//	if !cityIndex.Exists(acc.City) {
-	//		cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, &acc)
-	//}
-	//if acc.birthYear > 0 {
-	//	if !birthYearIndex.Exists(acc.birthYear) {
-	//		birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, &acc)
-	//}
-	//if acc.Fname != "" {
-	//	if !fnameIndex.Exists(acc.Fname) {
-	//		fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, &acc)
-	//}
-	//if acc.Sname != "" {
-	//	if !snameIndex.Exists(acc.Sname) {
-	//		snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, &acc)
-	//}
-	//if acc.Sex != "" {
-	//	if !sexIndex.Exists(acc.Sex) {
-	//		sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
-	//	}
-	//	sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, &acc)
-	//}
 
-	accountIndex.Put(acc.ID, &acc)
+		likesMap.AppendLike(acc.ID, uint32(likeId), uint32(ts)) // 4463, 1294 without call this line //1386
+
+		//if !likeeIndex.Exists(likeId) {
+		//	likeeIndex.Update(likeId, treemap.NewWith(inverseUint32Comparator))
+		//}
+		//likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, acc)
+	}
+
+	accountIndex.Put(acc.ID, acc) // 394 // 498 with dictionaries
 }
 
 func calculateSimilarityForUser(account *Account) *treemap.Map {
@@ -781,21 +656,21 @@ func calculateSimilarityForUser(account *Account) *treemap.Map {
 	userSimilarityMap := treemap.NewWith(inverseFloat32Comparator)
 	var similarMap = map[*Account]float32{}
 
-	for likeId, tsList := range user1Likes {
-		ts1 := tsList.getTimestamp()
-		it := likeeIndex.Get(likeId).(*treemap.Map).Iterator()
-
-		for it.Next() {
-			similarAcc := it.Value().(*Account)
-			ts2 := similarAcc.likes[likeId].getTimestamp()
-
-			if ts1 == ts2 {
-				similarMap[similarAcc] += 1
-			} else {
-				similarMap[similarAcc] += float32(1 / math.Abs(float64(ts1-ts2)))
-			}
-		}
-	}
+	//for likeId, tsList := range user1Likes {
+	//	ts1 := tsList.getTimestamp()
+	//	it := likeeIndex.Get(likeId).(*treemap.Map).Iterator()
+	//
+	//	for it.Next() {
+	//		similarAcc := it.Value().(*Account)
+	//		ts2 := similarAcc.likes[likeId].getTimestamp()
+	//
+	//		if ts1 == ts2 {
+	//			similarMap[similarAcc] += 1
+	//		} else {
+	//			similarMap[similarAcc] += float32(1 / math.Abs(float64(ts1-ts2)))
+	//		}
+	//	}
+	//}
 
 	for similarAcc, similarity := range similarMap {
 		userSimilarityMap.Put(similarity, similarAcc)
@@ -812,27 +687,22 @@ func updateLikes(data []byte) {
 	likes := jsonData.GetArray("likes")
 
 	for _, v := range likes {
-		likerId := v.GetInt("liker")
-		likeeId := v.GetInt("likee")
-		ts := v.GetInt("ts")
+		likerId := v.GetUint("liker")
+		likeeId := v.GetUint("likee")
+		ts := v.GetUint("ts")
 
 		if likerId == 0 || likeeId == 0 || ts == 0 {
 			continue
 		}
+		//liker, _ := accountIndex.Get(likerId)
+		//likerAcc := liker.(*Account)
 
-		liker, _ := accountIndex.Get(likerId)
+		likesMap.AppendLike(uint32(likerId), uint32(likeeId), uint32(ts))
 
-		likerAcc := liker.(*Account)
-		if likerAcc.likes == nil {
-			likerAcc.likes = make(map[int]LikesList, 0)
-		}
-
-		likerAcc.AppendLike(likeeId, ts)
-
-		if !likeeIndex.Exists(likeeId) {
-			likeeIndex.Update(likeeId, treemap.NewWith(inverseUint32Comparator))
-		}
-		likeeIndex.Get(likeeId).(*treemap.Map).Put(likerAcc.ID, likerAcc)
+		//if !likeeIndex.Exists(likeeId) {
+		//	likeeIndex.Update(likeeId, treemap.NewWith(inverseUint32Comparator))
+		//}
+		//likeeIndex.Get(likeeId).(*treemap.Map).Put(likerAcc.ID, likerAcc)
 	}
 
 	pp.Put(p)

@@ -54,10 +54,17 @@ func main() {
 	parseDataDir(dataDir)
 
 	log.Println("Data has been parsed completely")
-	log.Println("Accounts amount:", accountIndex.Size())
 
 	runtime.GC()
 	log.Println("GC has been finished")
+	log.Println("Stats:")
+	log.Println("Accounts count:", accountIndex.Size())
+	log.Println("Countries index length:", len(countryIndex.v))
+	log.Println("Cities index length:", len(cityIndex.v))
+	log.Println("Interests index length:", len(interestsIndex.v))
+	log.Println("BirthYear index index length:", len(birthYearIndex.v))
+	log.Println("Fname  index length:", len(fnameIndex.v))
+	log.Println("Sname index index length:", len(snameIndex.v))
 
 	if err := fasthttp.ListenAndServe(addr, requestHandler); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
@@ -156,9 +163,9 @@ func parseFile(filename string) {
 
 		pp.Put(p)
 
-		//if time.Now().Second()%3 == 0 {
-		//	runtime.GC()
-		//}
+		if time.Now().Second()%3 == 0 {
+			runtime.GC()
+		}
 
 		//parseAccountsMap(rawData)
 	} else if strings.LastIndex(filename, "options.txt") != -1 {
