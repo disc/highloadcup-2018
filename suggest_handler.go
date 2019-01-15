@@ -108,7 +108,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 
 		if passedFilters == filtersCount {
-			suggestsByOneUser := treemap.NewWith(inverseIntComparator)
+			suggestsByOneUser := treemap.NewWith(inverseUint32Comparator)
 			for likeId := range account.likes {
 				// ignore exists like
 				if _, exists := requestedAccount.likes[likeId]; exists {

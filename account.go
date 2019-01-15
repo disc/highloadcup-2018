@@ -14,13 +14,13 @@ import (
 )
 
 var (
-	inverseIntComparator = func(a, b interface{}) int {
-		return -utils.IntComparator(a, b)
+	inverseUint32Comparator = func(a, b interface{}) int {
+		return -utils.UInt32Comparator(a, b)
 	}
 	inverseFloat32Comparator = func(a, b interface{}) int {
 		return -utils.Float32Comparator(a, b)
 	}
-	accountIndex   = treemap.NewWith(inverseIntComparator)
+	accountIndex   = treemap.NewWith(inverseUint32Comparator)
 	countryIndex   = NewSafeTreemapIndex()
 	cityIndex      = NewSafeIndex()
 	birthYearIndex = NewSafeIndex()
@@ -34,7 +34,7 @@ var (
 
 	inversedTreemapPool = &sync.Pool{
 		New: func() interface{} {
-			return treemap.NewWith(inverseIntComparator)
+			return treemap.NewWith(inverseUint32Comparator)
 		},
 	}
 )
@@ -63,31 +63,115 @@ type Account struct {
 	sync.Mutex
 }
 
-//13000000 // MaxInt16
-//uint8  : 0 to 255
-//uint16 : 0 to 65535
-//uint32 : 0 to 4294967295
-//uint64 : 0 to 18446744073709551615
-type AccountUpdated struct {
-	ID      uint32            `json:"id"`
-	Email   string            `json:"email"`
-	Fname   string            `json:"fname"`
-	Sname   string            `json:"sname"`
-	Phone   string            `json:"phone"`
-	Sex     byte              `json:"sex"`
-	Birth   uint32            `json:"birth"`
-	Country byte              `json:"country"` // get value from map
-	City    byte              `json:"city"`    // get value from map
-	Joined  uint8             `json:"joined"`
-	Status  byte              `json:"status"` // get value from map
-	Premium map[string]uint32 `json:"premium"`
+func NewStringDictionary() *StringDictionary {
+	return &StringDictionary{
+		v: make(map[string]uint8, 0),
+		k: make(map[uint8]string, 0),
+	}
+}
 
-	interestsMap map[byte]struct{}
-	emailDomain  byte
-	phoneCode    uint16
-	birthYear    uint16
-	joinedYear   uint16
-	likes        map[uint32]LikesList
+type StringDictionary struct {
+	v map[string]uint8
+	k map[uint8]string
+	sync.Mutex
+}
+
+func (d *StringDictionary) Add(value string) uint8 {
+	d.Lock()
+	defer d.Unlock()
+
+	if id, ok := d.v[value]; ok {
+		return id
+	}
+
+	id := uint8(len(d.v)) + 1
+	d.v[value] = id
+	d.k[id] = value
+
+	return id
+}
+
+func (d *StringDictionary) Get(id uint8) string {
+	d.Lock()
+	defer d.Unlock()
+
+	if value, ok := d.k[id]; ok {
+		return value
+	}
+	return ""
+}
+
+func (d *StringDictionary) GetId(value string) uint8 {
+	d.Lock()
+	defer d.Unlock()
+
+	if id, ok := d.v[value]; ok {
+		return id
+	}
+	return 0
+}
+
+var statusDict = &StringDictionary{
+	v: map[string]uint8{
+		"свободны":   1,
+		"все сложно": 2,
+		"заняты":     3,
+	},
+	k: map[uint8]string{
+		1: "свободны",
+		2: "все сложно",
+		3: "заняты",
+	},
+}
+var sexDict = &StringDictionary{
+	v: map[string]uint8{
+		"m": 1,
+		"f": 2,
+	},
+	k: map[uint8]string{
+		1: "m",
+		2: "f",
+	},
+}
+var interestsDict = NewStringDictionary()
+var emailDomainsDict = NewStringDictionary()
+var phoneCodesDict = NewStringDictionary()
+var countriesDict = NewStringDictionary()
+var citiesDict = NewStringDictionary()
+var fnamesDict = NewStringDictionary()
+var snamesDict = NewStringDictionary()
+
+var likesMap map[*AccountUpdated]map[uint32]LikesList
+
+//interestsMap map[byte]struct{}
+
+//13000000 // MaxInt16
+//** Interests 90
+//*** Domain 13
+//*** Fnames 108
+//*** City 607
+//*** Country 70
+//*** Email prefixes 240
+//*** Sname prefixes 64
+//*** phone codes 100
+type AccountUpdated struct {
+	ID           uint32
+	Status       byte
+	Fname        uint8
+	Sname        uint8
+	Sex          byte
+	Email        string
+	Phone        string
+	Birth        int32
+	BirthYear    uint16
+	Country      byte
+	City         byte
+	Joined       uint32
+	JoinedYear   uint16
+	EmailDomain  byte
+	PhoneCode    byte
+	Premium      map[string]uint32
+	InterestsMap map[uint8]struct{}
 
 	sync.Mutex
 }
@@ -121,7 +205,7 @@ func (acc *Account) Update(data []byte) {
 			acc.interestsMap[interest] = struct{}{}
 
 			if !interestsIndex.Exists(interest) {
-				interestsIndex.Update(interest, treemap.NewWith(inverseIntComparator))
+				interestsIndex.Update(interest, treemap.NewWith(inverseUint32Comparator))
 			}
 			interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -176,7 +260,7 @@ func (acc *Account) Update(data []byte) {
 
 		if acc.birthYear > 0 {
 			if !birthYearIndex.Exists(acc.birthYear) {
-				birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseIntComparator))
+				birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseUint32Comparator))
 			}
 			birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -200,7 +284,7 @@ func (acc *Account) Update(data []byte) {
 		acc.Country = string(jsonValue.GetStringBytes("country"))
 		if len(acc.Country) > 0 {
 			if !countryIndex.Exists(acc.Country) {
-				countryIndex.Update(acc.Country, treemap.NewWith(inverseIntComparator))
+				countryIndex.Update(acc.Country, treemap.NewWith(inverseUint32Comparator))
 			}
 			countryIndex.Get(acc.Country).Put(acc.ID, acc)
 		}
@@ -216,7 +300,7 @@ func (acc *Account) Update(data []byte) {
 		acc.City = string(jsonValue.GetStringBytes("city"))
 		if len(acc.City) > 0 {
 			if !cityIndex.Exists(acc.City) {
-				cityIndex.Update(acc.City, treemap.NewWith(inverseIntComparator))
+				cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
 			}
 			cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -232,7 +316,7 @@ func (acc *Account) Update(data []byte) {
 		acc.Fname = string(jsonValue.GetStringBytes("fname"))
 		if len(acc.Fname) > 0 {
 			if !fnameIndex.Exists(acc.Fname) {
-				fnameIndex.Update(acc.Fname, treemap.NewWith(inverseIntComparator))
+				fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
 			}
 			fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -248,7 +332,7 @@ func (acc *Account) Update(data []byte) {
 		acc.Sname = string(jsonValue.GetStringBytes("sname"))
 		if len(acc.Sname) > 0 {
 			if !snameIndex.Exists(acc.Sname) {
-				snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
+				snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
 			}
 			snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -263,7 +347,7 @@ func (acc *Account) Update(data []byte) {
 		// set new value
 		acc.Sex = string(jsonValue.GetStringBytes("sex"))
 		if !sexIndex.Exists(acc.Sex) {
-			sexIndex.Update(acc.Sex, treemap.NewWith(inverseIntComparator))
+			sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
 		}
 		sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, acc)
 	}
@@ -293,7 +377,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 			interest := v.(string)
 			acc.interestsMap[interest] = struct{}{}
 			if !interestsIndex.Exists(interest) {
-				interestsIndex.Update(interest, treemap.NewWith(inverseIntComparator))
+				interestsIndex.Update(interest, treemap.NewWith(inverseUint32Comparator))
 			}
 			interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -346,7 +430,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 
 		if acc.birthYear > 0 {
 			if !birthYearIndex.Exists(acc.birthYear) {
-				birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseIntComparator))
+				birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseUint32Comparator))
 			}
 			birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, acc)
 		}
@@ -373,7 +457,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 		// set new value
 		acc.Country = newValue.(string)
 		if !countryIndex.Exists(acc.Country) {
-			countryIndex.Update(acc.Country, treemap.NewWith(inverseIntComparator))
+			countryIndex.Update(acc.Country, treemap.NewWith(inverseUint32Comparator))
 		}
 		countryIndex.Get(acc.Country).Put(acc.ID, acc)
 	}
@@ -387,7 +471,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 		// set new value
 		acc.City = newValue.(string)
 		if !cityIndex.Exists(acc.City) {
-			cityIndex.Update(acc.City, treemap.NewWith(inverseIntComparator))
+			cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
 		}
 		cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, acc)
 	}
@@ -401,7 +485,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 		// set new value
 		acc.Fname = newValue.(string)
 		if !fnameIndex.Exists(acc.Fname) {
-			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseIntComparator))
+			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
 		}
 		fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, acc)
 	}
@@ -415,7 +499,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 		// set new value
 		acc.Sname = newValue.(string)
 		if !snameIndex.Exists(acc.Sname) {
-			snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
+			snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
 		}
 		snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc)
 	}
@@ -429,7 +513,7 @@ func (acc *Account) UpdateOld(changedData map[string]interface{}) {
 		// set new value
 		acc.Sex = newValue.(string)
 		if !sexIndex.Exists(acc.Sex) {
-			sexIndex.Update(acc.Sex, treemap.NewWith(inverseIntComparator))
+			sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
 		}
 		sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, acc)
 	}
@@ -472,115 +556,114 @@ func NewAccountFromByte(data []byte) {
 }
 
 func NewAccountFromJson(jsonValue *fastjson.Value) {
-	acc := &Account{}
-	acc.ID = jsonValue.GetInt("id")
+	acc := &AccountUpdated{}
+	acc.ID = uint32(jsonValue.GetUint("id"))
 
-	acc.interestsMap = make(map[string]struct{})
+	acc.InterestsMap = make(map[uint8]struct{}, 0)
 	for _, v := range jsonValue.GetArray("interests") {
 		interest := string(v.GetStringBytes())
-		acc.interestsMap[interest] = struct{}{}
+		interestId := interestsDict.Add(interest)
+		acc.InterestsMap[interestId] = struct{}{}
 
-		if !interestsIndex.Exists(interest) {
-			interestsIndex.Update(interest, treemap.NewWith(inverseIntComparator))
+		if !interestsIndex.Exists(interestId) {
+			interestsIndex.Update(interestId, treemap.NewWith(inverseUint32Comparator))
 		}
-		interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, acc)
+		interestsIndex.Get(interestId).(*treemap.Map).Put(acc.ID, acc)
 	}
 
 	acc.Email = string(jsonValue.GetStringBytes("email"))
 	if len(acc.Email) > 0 {
 		components := strings.Split(acc.Email, "@")
 		if len(components) > 1 {
-			acc.emailDomain = components[1]
+			acc.EmailDomain = emailDomainsDict.Add(components[1])
 		}
 		emailIndex.Update(acc.Email, struct{}{})
 	}
 
-	acc.Status = string(jsonValue.GetStringBytes("status"))
+	acc.Status = statusDict.GetId(string(jsonValue.GetStringBytes("status")))
 
 	acc.Phone = string(jsonValue.GetStringBytes("phone"))
 	if len(acc.Phone) > 0 {
 		phoneCodeStr := strings.SplitN(strings.SplitN(acc.Phone, "(", 2)[1], ")", 2)[0]
-		if phoneCode, err := strconv.Atoi(phoneCodeStr); err == nil {
-			acc.phoneCode = phoneCode
-		}
+		acc.PhoneCode = phoneCodesDict.Add(phoneCodeStr)
 		phoneIndex.Update(acc.Phone, struct{}{})
 	}
 
-	acc.Birth = jsonValue.GetInt("birth")
-	acc.birthYear = time.Unix(int64(acc.Birth), 0).In(time.UTC).Year()
+	acc.Birth = int32(jsonValue.GetInt("birth"))
+	acc.BirthYear = uint16(time.Unix(int64(acc.Birth), 0).In(time.UTC).Year())
 
-	if acc.birthYear > 0 {
-		if !birthYearIndex.Exists(acc.birthYear) {
-			birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseIntComparator))
+	if acc.BirthYear > 0 {
+		if !birthYearIndex.Exists(acc.BirthYear) {
+			birthYearIndex.Update(acc.BirthYear, treemap.NewWith(inverseUint32Comparator))
 		}
-		birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, acc)
+		birthYearIndex.Get(acc.BirthYear).(*treemap.Map).Put(acc.ID, acc)
 	}
 
-	acc.Joined = jsonValue.GetInt("joined")
-	acc.joinedYear = time.Unix(int64(acc.Joined), 0).In(time.UTC).Year()
+	acc.Joined = uint32(jsonValue.GetUint("joined"))
+	acc.JoinedYear = uint16(time.Unix(int64(acc.Joined), 0).In(time.UTC).Year())
 
-	acc.likes = make(map[int]LikesList, 0)
-	for _, v := range jsonValue.GetArray("likes") {
-		likeId := v.GetInt("id")
-		ts := v.GetInt("ts")
+	//acc.likes = make(map[int]LikesList, 0)
+	//for _, v := range jsonValue.GetArray("likes") {
+	//	likeId := v.GetInt("id")
+	//	ts := v.GetInt("ts")
+	//
+	//	// TODO: ignore 0 in like id / ts
+	//	if likeId == 0 || ts == 0 {
+	//		continue
+	//	}
+	//
+	//	acc.AppendLike(likeId, ts)
+	//
+	//	if !likeeIndex.Exists(likeId) {
+	//		likeeIndex.Update(likeId, treemap.NewWith(inverseUint32Comparator))
+	//	}
+	//	likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, acc)
+	//}
 
-		// TODO: ignore 0 in like id / ts
-		if likeId == 0 || ts == 0 {
-			continue
-		}
-
-		acc.AppendLike(likeId, ts)
-
-		if !likeeIndex.Exists(likeId) {
-			likeeIndex.Update(likeId, treemap.NewWith(inverseIntComparator))
-		}
-		likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, acc)
-	}
-
-	acc.Country = string(jsonValue.GetStringBytes("country"))
-	if len(acc.Country) > 0 {
+	acc.Country = countriesDict.Add(string(jsonValue.GetStringBytes("country")))
+	if acc.Country > 0 {
 		if !countryIndex.Exists(acc.Country) {
-			countryIndex.Update(acc.Country, treemap.NewWith(inverseIntComparator))
+			countryIndex.Update(acc.Country, treemap.NewWith(inverseUint32Comparator))
 		}
 		countryIndex.Get(acc.Country).Put(acc.ID, acc)
 	}
 
-	acc.City = string(jsonValue.GetStringBytes("city"))
-	if len(acc.City) > 0 {
+	acc.City = citiesDict.Add(string(jsonValue.GetStringBytes("city")))
+	if acc.City > 0 {
 		if !cityIndex.Exists(acc.City) {
-			cityIndex.Update(acc.City, treemap.NewWith(inverseIntComparator))
+			cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
 		}
 		cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, acc)
 	}
 
-	acc.Fname = string(jsonValue.GetStringBytes("fname"))
-	if len(acc.Fname) > 0 {
+	acc.Fname = fnamesDict.Add(string(jsonValue.GetStringBytes("fname")))
+	if acc.Fname > 0 {
 		if !fnameIndex.Exists(acc.Fname) {
-			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseIntComparator))
+			fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
 		}
 		fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, acc)
 	}
 
-	acc.Sname = string(jsonValue.GetStringBytes("sname"))
-	if len(acc.Sname) > 0 {
+	acc.Sname = snamesDict.Add(string(jsonValue.GetStringBytes("sname")))
+	if acc.Sname > 0 {
 		if !snameIndex.Exists(acc.Sname) {
-			snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
+			snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
 		}
 		snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, acc)
 	}
 
-	acc.Sex = string(jsonValue.GetStringBytes("sex"))
+	acc.Sex = sexDict.GetId(string(jsonValue.GetStringBytes("sex")))
 	if !sexIndex.Exists(acc.Sex) {
-		sexIndex.Update(acc.Sex, treemap.NewWith(inverseIntComparator))
+		sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
 	}
 	sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, acc)
 
 	premiumObj := jsonValue.GetObject("premium")
 	if premiumObj != nil && premiumObj.Len() > 0 {
-		acc.Premium = make(map[string]int, 0)
+		acc.Premium = make(map[string]uint32, 0)
 
-		acc.Premium["start"] = premiumObj.Get("start").GetInt()
-		acc.Premium["finish"] = premiumObj.Get("finish").GetInt()
+		acc.Premium["start"] = uint32(premiumObj.Get("start").GetUint())
+		acc.Premium["finish"] = uint32(premiumObj.Get("finish").GetUint())
 	}
 
 	accountIndex.Put(acc.ID, acc) // 394
@@ -593,7 +676,7 @@ func NewAccount(acc Account) {
 	//	for _, interest := range acc.Interests {
 	//		acc.interestsMap[interest] = struct{}{}
 	//		if !interestsIndex.Exists(interest) {
-	//			interestsIndex.Update(interest, treemap.NewWith(inverseIntComparator))
+	//			interestsIndex.Update(interest, treemap.NewWith(inverseUint32Comparator))
 	//		}
 	//		interestsIndex.Get(interest).(*treemap.Map).Put(acc.ID, &acc)
 	//	}
@@ -637,7 +720,7 @@ func NewAccount(acc Account) {
 	//	//	acc.AppendLike(likeId, int(like["ts"].Int()))
 	//	//
 	//	//	if !likeeIndex.Exists(likeId) {
-	//	//		likeeIndex.Update(likeId, treemap.NewWith(inverseIntComparator))
+	//	//		likeeIndex.Update(likeId, treemap.NewWith(inverseUint32Comparator))
 	//	//	}
 	//	//	likeeIndex.Get(likeId).(*treemap.Map).Put(acc.ID, &acc)
 	//	//	return true
@@ -655,31 +738,31 @@ func NewAccount(acc Account) {
 	}
 	//if acc.City != "" {
 	//	if !cityIndex.Exists(acc.City) {
-	//		cityIndex.Update(acc.City, treemap.NewWith(inverseIntComparator))
+	//		cityIndex.Update(acc.City, treemap.NewWith(inverseUint32Comparator))
 	//	}
 	//	cityIndex.Get(acc.City).(*treemap.Map).Put(acc.ID, &acc)
 	//}
 	//if acc.birthYear > 0 {
 	//	if !birthYearIndex.Exists(acc.birthYear) {
-	//		birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseIntComparator))
+	//		birthYearIndex.Update(acc.birthYear, treemap.NewWith(inverseUint32Comparator))
 	//	}
 	//	birthYearIndex.Get(acc.birthYear).(*treemap.Map).Put(acc.ID, &acc)
 	//}
 	//if acc.Fname != "" {
 	//	if !fnameIndex.Exists(acc.Fname) {
-	//		fnameIndex.Update(acc.Fname, treemap.NewWith(inverseIntComparator))
+	//		fnameIndex.Update(acc.Fname, treemap.NewWith(inverseUint32Comparator))
 	//	}
 	//	fnameIndex.Get(acc.Fname).(*treemap.Map).Put(acc.ID, &acc)
 	//}
 	//if acc.Sname != "" {
 	//	if !snameIndex.Exists(acc.Sname) {
-	//		snameIndex.Update(acc.Sname, treemap.NewWith(inverseIntComparator))
+	//		snameIndex.Update(acc.Sname, treemap.NewWith(inverseUint32Comparator))
 	//	}
 	//	snameIndex.Get(acc.Sname).(*treemap.Map).Put(acc.ID, &acc)
 	//}
 	//if acc.Sex != "" {
 	//	if !sexIndex.Exists(acc.Sex) {
-	//		sexIndex.Update(acc.Sex, treemap.NewWith(inverseIntComparator))
+	//		sexIndex.Update(acc.Sex, treemap.NewWith(inverseUint32Comparator))
 	//	}
 	//	sexIndex.Get(acc.Sex).(*treemap.Map).Put(acc.ID, &acc)
 	//}
@@ -744,7 +827,7 @@ func updateLikes(data []byte) {
 		likerAcc.AppendLike(likeeId, ts)
 
 		if !likeeIndex.Exists(likeeId) {
-			likeeIndex.Update(likeeId, treemap.NewWith(inverseIntComparator))
+			likeeIndex.Update(likeeId, treemap.NewWith(inverseUint32Comparator))
 		}
 		likeeIndex.Get(likeeId).(*treemap.Map).Put(likerAcc.ID, likerAcc)
 	}

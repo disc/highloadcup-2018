@@ -7,15 +7,15 @@ import (
 )
 
 type SafeTreemapIndex struct {
-	v   map[string]*treemap.Map
+	v   map[interface{}]*treemap.Map
 	mux sync.Mutex
 }
 
 func NewSafeTreemapIndex() *SafeTreemapIndex {
-	return &SafeTreemapIndex{v: map[string]*treemap.Map{}}
+	return &SafeTreemapIndex{v: map[interface{}]*treemap.Map{}}
 }
 
-func (idx *SafeTreemapIndex) Exists(key string) bool {
+func (idx *SafeTreemapIndex) Exists(key interface{}) bool {
 	idx.mux.Lock()
 	defer idx.mux.Unlock()
 
@@ -24,7 +24,7 @@ func (idx *SafeTreemapIndex) Exists(key string) bool {
 	return ok
 }
 
-func (idx *SafeTreemapIndex) Update(key string, value *treemap.Map) {
+func (idx *SafeTreemapIndex) Update(key interface{}, value *treemap.Map) {
 	idx.mux.Lock()
 
 	idx.v[key] = value
@@ -32,7 +32,7 @@ func (idx *SafeTreemapIndex) Update(key string, value *treemap.Map) {
 	idx.mux.Unlock()
 }
 
-func (idx *SafeTreemapIndex) Delete(key string) {
+func (idx *SafeTreemapIndex) Delete(key interface{}) {
 	idx.mux.Lock()
 
 	delete(idx.v, key)
@@ -40,7 +40,7 @@ func (idx *SafeTreemapIndex) Delete(key string) {
 	idx.mux.Unlock()
 }
 
-func (idx *SafeTreemapIndex) Get(key string) *treemap.Map {
+func (idx *SafeTreemapIndex) Get(key interface{}) *treemap.Map {
 	idx.mux.Lock()
 	// Lock so only one goroutine at a time can access the map c.v.
 	defer idx.mux.Unlock()
