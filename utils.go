@@ -1,6 +1,6 @@
 package main
 
-func filterContains(needle map[string]struct{}, haystack map[string]struct{}) bool {
+func filterContains(needle map[uint8]struct{}, haystack map[uint8]struct{}) bool {
 	if len(haystack) == 0 || len(haystack) < len(needle) {
 		return false
 	}
@@ -16,7 +16,7 @@ func filterContains(needle map[string]struct{}, haystack map[string]struct{}) bo
 	return suitable
 }
 
-func filterAny(a map[string]struct{}, b map[string]struct{}) bool {
+func filterAny(a map[uint8]struct{}, b map[uint8]struct{}) bool {
 	low, high := a, b
 	if len(a) > len(b) {
 		low = b

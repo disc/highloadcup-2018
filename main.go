@@ -25,14 +25,14 @@ import (
 var (
 	addr = ":80"
 
-	now = int64(time.Now().Unix())
+	now = uint32(time.Now().Unix())
 
 	log = logrus.New()
 
 	isDebugMode = os.Getenv("DEBUG")
 
-	dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
-	//dataDir = "./data/"
+	//dataDir = "/Users/disc/Downloads/elim_accounts_261218/data/data/"
+	dataDir = "./data/"
 
 	pp fastjson.ParserPool
 )
@@ -206,7 +206,8 @@ func parseOptions(filename string) {
 	if file, err := os.OpenFile(filename, os.O_RDONLY, 0644); err == nil {
 		reader := bufio.NewReader(file)
 		if line, _, err := reader.ReadLine(); err == nil {
-			now, _ = strconv.ParseInt(string(line), 10, 32)
+			tmpUint, _ := strconv.ParseUint(string(line), 10, 32)
+			now = uint32(tmpUint)
 			log.Println("`Now` was updated from options.txt", now)
 		}
 	}

@@ -142,7 +142,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		responseProperties = append(responseProperties, "premium")
 	}
 
-	var foundAccounts []*Account
+	var foundAccounts []*AccountUpdated
 
 	filters := make(map[string]interface{})
 
@@ -166,19 +166,22 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		emailGtFilter = string(emailGtF)
 		filters["email_gt"] = 1
 	}
-	var birthYearFilter int
+	var birthYearFilter uint16
 	if len(birthYearF) > 0 {
-		birthYearFilter, _ = strconv.Atoi(string(birthYearF))
+		tempUint, _ := strconv.ParseUint(string(birthYearF), 10, 16)
+		birthYearFilter = uint16(tempUint)
 		filters["birth_year"] = 1
 	}
-	var birthLtFilter int
+	var birthLtFilter int32
 	if len(birthLtF) > 0 {
-		birthLtFilter, _ = strconv.Atoi(string(birthLtF))
+		tempUint, _ := strconv.Atoi(string(birthLtF))
+		birthLtFilter = int32(tempUint)
 		filters["birth_lt"] = 1
 	}
-	var birthGtFilter int
+	var birthGtFilter int32
 	if len(birthGtF) > 0 {
-		birthGtFilter, _ = strconv.Atoi(string(birthGtF))
+		tempUint, _ := strconv.Atoi(string(birthGtF))
+		birthGtFilter = int32(tempUint)
 		filters["birth_gt"] = 1
 	}
 	var statusEqFilter string
@@ -321,15 +324,15 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 		premiumNowFilter = true
 		filters["premium_now"] = 1
 	}
-	var interestsAnyFilter map[string]struct{}
-	var interestsContainsFilter map[string]struct{}
+	var interestsAnyFilter map[uint8]struct{}
+	var interestsContainsFilter map[uint8]struct{}
 	if len(interestsAnyF) > 0 {
 		// 2 allocs costs
 		words := strings.Split(string(interestsAnyF), ",")
 		if len(words) > 0 {
-			interestsAnyFilter = map[string]struct{}{}
+			interestsAnyFilter = map[uint8]struct{}{}
 			for _, word := range words {
-				interestsAnyFilter[word] = struct{}{}
+				interestsAnyFilter[interestsDict.GetId(word)] = struct{}{}
 			}
 			filters["interests_any"] = 1
 		}
@@ -337,9 +340,9 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	if len(interestsContainsF) > 0 {
 		words := strings.Split(string(interestsContainsF), ",")
 		if len(words) > 0 {
-			interestsContainsFilter = map[string]struct{}{}
+			interestsContainsFilter = map[uint8]struct{}{}
 			for _, word := range words {
-				interestsContainsFilter[word] = struct{}{}
+				interestsContainsFilter[interestsDict.GetId(word)] = struct{}{}
 			}
 			filters["interests_contains"] = 1
 		}
@@ -504,23 +507,23 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				break
 			}
 			passedFilters := 0
-			account := it.Value().(*Account)
+			account := it.Value().(*AccountUpdated)
 			if sexEqFilter != "" {
-				if account.Sex == sexEqFilter {
+				if account.Sex == sexDict.GetId(sexEqFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(statusEqFilter) > 0 {
-				if account.Status == statusEqFilter {
+				if account.Status == statusDict.GetId(statusEqFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(statusNeqFilter) > 0 {
-				if account.Status != statusNeqFilter {
+				if account.Status != statusDict.GetId(statusNeqFilter) {
 					passedFilters += 1
 				} else {
 					continue
@@ -528,20 +531,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if fnameEqFilter != "" {
 				// use const for index name
-				if bytes.Equal(selectedIndexName, []byte("fname")) || account.Fname == fnameEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("fname")) || account.Fname == fnamesDict.GetId(fnameEqFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if fnameNullFilter {
-				if account.Fname == "" {
+				if account.Fname == 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if fnameNotNullFilter {
-				if account.Fname != "" {
+				if account.Fname != 0 {
 					passedFilters += 1
 				} else {
 					continue
@@ -549,10 +552,10 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if len(fnameAnyFilter) > 0 {
 				fname := account.Fname
-				if len(fname) == 0 {
+				if fname == 0 {
 					continue
 				}
-				if _, ok := fnameAnyFilter[fname]; ok {
+				if _, ok := fnameAnyFilter[fnamesDict.Get(fname)]; ok {
 					passedFilters += 1
 				} else {
 					continue
@@ -560,7 +563,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if snameEqFilter != "" {
 				// use const for index name
-				if bytes.Equal(selectedIndexName, []byte("sname")) || account.Sname == snameEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("sname")) || account.Sname == snamesDict.GetId(snameEqFilter) {
 					passedFilters += 1
 				} else {
 					continue
@@ -569,40 +572,40 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// slow
 				// use const for index name
 				//FIXME: slow solution
-				if strings.HasPrefix(account.Sname, snameStartsFilter) {
+				if strings.HasPrefix(snamesDict.Get(account.Sname), snameStartsFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if snameNullFilter {
-				if account.Sname == "" {
+				if account.Sname == 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if snameNotNullFilter {
-				if account.Sname != "" {
+				if account.Sname != 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if phoneNullFilter {
-				if account.Phone == "" {
+				if account.Phone == 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if phoneNotNullFilter {
-				if account.Phone != "" {
+				if account.Phone != 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if phoneCodeFilter > 0 {
-				if account.phoneCode == phoneCodeFilter {
+				if account.PhoneCode == byte(phoneCodeFilter) {
 					passedFilters += 1
 				} else {
 					continue
@@ -610,7 +613,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if countryEqFilter != "" {
 				// use const for index name
-				if bytes.Equal(selectedIndexName, []byte("country")) || account.Country == countryEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("country")) || account.Country == countriesDict.GetId(countryEqFilter) {
 					passedFilters += 1
 				} else {
 					continue
@@ -618,13 +621,13 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			//FIXME: group null/not-null filters
 			if countryNullFilter {
-				if account.Country == "" {
+				if account.Country == 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if countryNotNullFilter {
-				if account.Country != "" {
+				if account.Country != 0 {
 					passedFilters += 1
 				} else {
 					continue
@@ -632,20 +635,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if cityEqFilter != "" {
 				// use const for index name
-				if bytes.Equal(selectedIndexName, []byte("city")) || account.City == cityEqFilter {
+				if bytes.Equal(selectedIndexName, []byte("city")) || account.City == citiesDict.GetId(cityEqFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if cityNullFilter {
-				if account.City == "" {
+				if account.City == 0 {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if cityNotNullFilter {
-				if account.City != "" {
+				if account.City != 0 {
 					passedFilters += 1
 				} else {
 					continue
@@ -654,17 +657,17 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			if len(cityAnyFilter) > 0 {
 				// FIXME: slow solution
 				accountCity := account.City
-				if len(accountCity) == 0 {
+				if accountCity == 0 {
 					continue
 				}
-				if _, ok := cityAnyFilter[accountCity]; ok {
+				if _, ok := cityAnyFilter[citiesDict.Get(accountCity)]; ok {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(interestsAnyFilter) > 0 {
-				if filterAny(account.interestsMap, interestsAnyFilter) {
+				if filterAny(account.InterestsMap, interestsAnyFilter) {
 					passedFilters += 1
 				} else {
 					continue
@@ -672,7 +675,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if len(interestsContainsFilter) > 0 {
 				// FIXME: slow solution
-				if filterContains(interestsContainsFilter, account.interestsMap) {
+				if filterContains(interestsContainsFilter, account.InterestsMap) {
 					passedFilters += 1
 				} else {
 					continue
@@ -682,7 +685,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				// FIXME: slow solution
 				suitable := true
 				for _, v := range likesContainsFilter {
-					if _, ok := account.likes[v]; !ok {
+					if _, ok := likesMap.getLikesFor(account.ID)[uint32(v)]; !ok {
 						suitable = false
 						break
 					}
@@ -694,20 +697,20 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 				}
 			}
 			if len(emailLtFilter) > 0 {
-				if account.Email < emailLtFilter {
+				if account.Email < emailsDict.GetId(emailLtFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			} else if len(emailGtFilter) > 0 {
-				if account.Email > emailGtFilter {
+				if account.Email > emailsDict.GetId(emailGtFilter) {
 					passedFilters += 1
 				} else {
 					continue
 				}
 			}
 			if len(emailDomainFilter) > 0 {
-				if account.emailDomain == emailDomainFilter {
+				if account.EmailDomain == emailDomainsDict.GetId(emailDomainFilter) {
 					passedFilters += 1
 				} else {
 					continue
@@ -715,7 +718,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 			}
 			if birthYearFilter > 0 {
 				// use const for index name
-				if bytes.Equal(selectedIndexName, []byte("birth_year")) || account.birthYear == birthYearFilter {
+				if bytes.Equal(selectedIndexName, []byte("birth_year")) || account.BirthYear == birthYearFilter {
 					passedFilters += 1
 				} else {
 					continue
@@ -761,7 +764,7 @@ func filterHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	if len(foundAccounts) > 0 {
-		ctx.Success("application/json", prepareResponseBytes(foundAccounts, responseProperties))
+		ctx.Success("application/json", prepareResponseBytesUpdated(foundAccounts, responseProperties))
 		return
 	}
 

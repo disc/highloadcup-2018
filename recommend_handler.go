@@ -164,7 +164,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		if passedFilters == filtersCount {
 			foundAccounts = append(foundAccounts, &CompatibilityResult{
 				id:              account.ID,
-				hasPremiumNow:   account.hasActivePremium(now),
+				hasPremiumNow:   account.hasActivePremium(int64(now)),
 				status:          account.Status,
 				commonInterests: interestsIntersections,
 				ageDiff:         int(math.Abs(float64(requestedAccount.Birth - account.Birth))),

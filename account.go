@@ -135,6 +135,10 @@ func (l LikesMap) getTimestamp(likerId uint32, likeeId uint32) uint32 {
 	return ts
 }
 
+func (l LikesMap) getLikesFor(likerId uint32) map[uint32][2]uint32 {
+	return l.v[likerId]
+}
+
 var likesMap = &LikesMap{
 	v: map[uint32]map[uint32][2]uint32{},
 }
@@ -170,6 +174,42 @@ type AccountUpdated struct {
 	InterestsMap map[uint8]struct{}
 
 	sync.Mutex
+}
+
+func (acc AccountUpdated) getEmailValue() string {
+	return emailsDict.Get(acc.Email)
+}
+
+func (acc AccountUpdated) getSexValue() string {
+	return sexDict.Get(acc.Sex)
+}
+
+func (acc AccountUpdated) getStatusValue() string {
+	return statusDict.Get(acc.Status)
+}
+
+func (acc AccountUpdated) getFnameValue() string {
+	return fnamesDict.Get(acc.Fname)
+}
+
+func (acc AccountUpdated) getSnameValue() string {
+	return snamesDict.Get(acc.Sname)
+}
+
+func (acc AccountUpdated) getPhoneValue() string {
+	return phonesDict.Get(acc.Phone)
+}
+
+func (acc AccountUpdated) getCountryValue() string {
+	return countriesDict.Get(acc.Country)
+}
+
+func (acc AccountUpdated) getCityValue() string {
+	return citiesDict.Get(acc.City)
+}
+
+func (acc AccountUpdated) hasActivePremium(now uint32) bool {
+	return acc.Premium["start"] <= now && acc.Premium["finish"] > now
 }
 
 func (acc Account) hasActivePremium(now int64) bool {
