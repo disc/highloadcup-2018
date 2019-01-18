@@ -10,15 +10,15 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
+func suggestHandler(ctx *fasthttp.RequestCtx, accountId uint32) {
 	allowedParams := map[string]int{
 		"query_id": 1, "limit": 1,
 		"country": 1, "city": 1,
 	}
 
-	var requestedAccount *Account
+	var requestedAccount *AccountUpdated
 	if account, ok := accountIndex.Get(accountId); ok {
-		requestedAccount = account.(*Account)
+		requestedAccount = account.(*AccountUpdated)
 	} else {
 		ctx.Error("{}", 404)
 		return
@@ -89,10 +89,10 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 			break
 		}
 		passedFilters := 0
-		account := it.Value().(*Account)
+		account := it.Value().(*AccountUpdated)
 
 		if countryEqFilter != "" {
-			if account.Country == countryEqFilter {
+			if account.Country == countriesDict.GetId(countryEqFilter) {
 				passedFilters += 1
 			} else {
 				continue
@@ -100,7 +100,7 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 
 		if cityEqFilter != "" {
-			if account.City == cityEqFilter {
+			if account.City == citiesDict.GetId(cityEqFilter) {
 				passedFilters += 1
 			} else {
 				continue
@@ -109,13 +109,13 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 
 		if passedFilters == filtersCount {
 			suggestsByOneUser := treemap.NewWith(inverseUint32Comparator)
-			for likeId := range account.likes {
+			for likeId := range likesMap.getLikesFor(account.ID) {
 				// ignore exists like
-				if _, exists := requestedAccount.likes[likeId]; exists {
+				if _, exists := likesMap.getLikesFor(account.ID)[likeId]; exists {
 					continue
 				}
 				if suggestedLike, ok := accountIndex.Get(likeId); ok {
-					suggestedAccount := suggestedLike.(*Account)
+					suggestedAccount := suggestedLike.(*AccountUpdated)
 					if suggestedAccount.Sex != requestedAccount.Sex {
 						// sort by like id from one user
 						suggestsByOneUser.Put(suggestedAccount.ID, suggestedAccount)
@@ -129,13 +129,13 @@ func suggestHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	}
 
 	if foundAccounts.Size() > 0 {
-		var found []*Account
+		var found []*AccountUpdated
 		it := foundAccounts.Iterator()
 		for it.Next() && len(found) < limit {
-			found = append(found, it.Value().(*Account))
+			found = append(found, it.Value().(*AccountUpdated))
 		}
 
-		ctx.Success("application/json", prepareResponseBytes(found, []string{
+		ctx.Success("application/json", prepareResponseBytesUpdated(found, []string{
 			"id", "email", "status", "fname", "sname",
 		}))
 		return

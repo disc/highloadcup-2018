@@ -11,15 +11,15 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
+func recommendHandler(ctx *fasthttp.RequestCtx, accountId uint32) {
 	allowedParams := map[string]int{
 		"query_id": 1, "limit": 1,
 		"country": 1, "city": 1,
 	}
 
-	var requestedAccount *Account
+	var requestedAccount *AccountUpdated
 	if account, ok := accountIndex.Get(accountId); ok {
-		requestedAccount = account.(*Account)
+		requestedAccount = account.(*AccountUpdated)
 	} else {
 		ctx.Error("{}", 404)
 		return
@@ -52,11 +52,11 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	vmap := treemapPool.Get()
 	suitableIndexes := vmap.(*treemap.Map)
 	switch requestedAccount.Sex {
-	case "m":
-		femaleIndex := sexIndex.Get("f").(*treemap.Map)
+	case sexDict.GetId("m"):
+		femaleIndex := sexIndex.Get(sexDict.GetId("f")).(*treemap.Map)
 		suitableIndexes.Put(femaleIndex.Size(), namedIndex.Update([]byte("sex_f"), femaleIndex))
-	case "f":
-		maleIndex := sexIndex.Get("m").(*treemap.Map)
+	case sexDict.GetId("f"):
+		maleIndex := sexIndex.Get(sexDict.GetId("m")).(*treemap.Map)
 		suitableIndexes.Put(maleIndex.Size(), namedIndex.Update([]byte("sex_m"), maleIndex))
 	}
 
@@ -130,14 +130,14 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	it := index.Iterator()
 	for it.Next() {
 		passedFilters := 0
-		account := it.Value().(*Account)
+		account := it.Value().(*AccountUpdated)
 
 		if requestedAccount.Sex == account.Sex {
 			continue
 		}
 
 		if countryEqFilter != "" {
-			if bytes.Equal(selectedIndexName, []byte("country")) || account.Country == countryEqFilter {
+			if bytes.Equal(selectedIndexName, []byte("country")) || account.Country == countriesDict.GetId(countryEqFilter) {
 				passedFilters += 1
 			} else {
 				continue
@@ -145,14 +145,14 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		}
 
 		if cityEqFilter != "" {
-			if bytes.Equal(selectedIndexName, []byte("city ")) || account.City == cityEqFilter {
+			if bytes.Equal(selectedIndexName, []byte("city ")) || account.City == citiesDict.GetId(cityEqFilter) {
 				passedFilters += 1
 			} else {
 				continue
 			}
 		}
 
-		interestsIntersections := intersectionsCount(requestedAccount.interestsMap, account.interestsMap)
+		interestsIntersections := intersectionsCount(requestedAccount.InterestsMap, account.InterestsMap)
 		if interestsIntersections > 0 {
 			passedFilters += 1
 		} else {
@@ -164,7 +164,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 		if passedFilters == filtersCount {
 			foundAccounts = append(foundAccounts, &CompatibilityResult{
 				id:              account.ID,
-				hasPremiumNow:   account.hasActivePremium(int64(now)),
+				hasPremiumNow:   account.hasActivePremium(now),
 				status:          account.Status,
 				commonInterests: interestsIntersections,
 				ageDiff:         int(math.Abs(float64(requestedAccount.Birth - account.Birth))),
@@ -176,7 +176,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 	if len(foundAccounts) > 0 {
 		sort.Sort(compatibilitySort(foundAccounts))
 
-		var found []*Account
+		var found []*AccountUpdated
 		for _, v := range foundAccounts {
 			if len(found) >= limit {
 				break
@@ -184,7 +184,7 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 			found = append(found, v.account)
 		}
 
-		ctx.Success("application/json", prepareResponseBytes(found, []string{
+		ctx.Success("application/json", prepareResponseBytesUpdated(found, []string{
 			"id", "email", "status", "fname", "sname", "birth", "premium",
 		}))
 		return
@@ -195,23 +195,12 @@ func recommendHandler(ctx *fasthttp.RequestCtx, accountId int) {
 }
 
 type CompatibilityResult struct {
-	id              int
+	id              uint32
 	hasPremiumNow   bool
-	status          string
+	status          byte
 	commonInterests int
 	ageDiff         int
-	account         *Account
-}
-
-func (cr CompatibilityResult) getStatusValue() int {
-	switch cr.status {
-	case "свободны":
-		return 1
-	case "всё сложно":
-		return 2
-	default:
-		return 3
-	}
+	account         *AccountUpdated
 }
 
 func (cr CompatibilityResult) getPremium() int {
@@ -244,9 +233,9 @@ func (s compatibilitySort) Less(i, j int) bool {
 	}
 
 	if result == 0 {
-		if acc1.getStatusValue() < acc2.getStatusValue() {
+		if acc1.status < acc2.status {
 			return true
-		} else if acc1.getStatusValue() > acc2.getStatusValue() {
+		} else if acc1.status > acc2.status {
 			return false
 		} else {
 			result = 0

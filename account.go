@@ -688,13 +688,13 @@ func NewAccountFromJson(jsonValue *fastjson.Value) {
 	accountIndex.Put(acc.ID, acc) // 394 // 498 with dictionaries
 }
 
-func calculateSimilarityForUser(account *Account) *treemap.Map {
-	user1Likes := account.likes
+func calculateSimilarityForUser(account *AccountUpdated) *treemap.Map {
+	user1Likes := likesMap.getLikesFor(account.ID)
 	if len(user1Likes) == 0 {
 		return nil
 	}
 	userSimilarityMap := treemap.NewWith(inverseFloat32Comparator)
-	var similarMap = map[*Account]float32{}
+	var similarMap = map[*AccountUpdated]float32{}
 
 	//for likeId, tsList := range user1Likes {
 	//	ts1 := tsList.getTimestamp()

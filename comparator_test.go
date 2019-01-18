@@ -133,7 +133,7 @@ func _Test2Comparator(t *testing.T) {
 
 	log.Println("ID, prem, status, interests, ageDiff")
 	for _, res := range tempSlice {
-		log.Printf("|%3v|%6v|%12v (%v)|%3v|%3v", res.id, res.hasPremiumNow, res.status, res.getStatusValue(), res.commonInterests, res.ageDiff)
+		log.Printf("|%3v|%6v|%12v (%v)|%3v|%3v", res.id, res.hasPremiumNow, res.status, res.status, res.commonInterests, res.ageDiff)
 	}
 }
 

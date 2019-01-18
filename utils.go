@@ -32,7 +32,7 @@ func filterAny(a map[uint8]struct{}, b map[uint8]struct{}) bool {
 	return false
 }
 
-func intersectionsCount(needle map[string]struct{}, haystack map[string]struct{}) int {
+func intersectionsCount(needle map[uint8]struct{}, haystack map[uint8]struct{}) int {
 	if len(haystack) == 0 {
 		return 0
 	}

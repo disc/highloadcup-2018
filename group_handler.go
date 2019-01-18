@@ -252,9 +252,10 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	birthF := ctx.QueryArgs().Peek("birth")
-	var birthFilter int
+	var birthFilter uint16
 	if len(birthF) > 0 { //TODO: Add validation
-		birthFilter, _ = strconv.Atoi(string(birthF))
+		tmpUint, _ := strconv.ParseUint(string(birthF), 10, 16)
+		birthFilter = uint16(tmpUint)
 		if birthYearIndex.Exists(birthFilter) {
 			currIndex := birthYearIndex.Get(birthFilter).(*treemap.Map)
 			suitableIndexes.Put(
@@ -268,21 +269,23 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	joinedF := ctx.QueryArgs().Peek("joined")
-	var joinedFilter int
+	var joinedFilter uint16
 	if len(joinedF) > 0 { //TODO: Add validation
-		joinedFilter, _ = strconv.Atoi(string(joinedF))
+		tempUint, _ := strconv.ParseUint(string(joinedF), 10, 16)
+		joinedFilter = uint16(tempUint)
 	}
 
 	interestsF := ctx.QueryArgs().Peek("interests")
-	var interestsFilter string
+	var interestsFilter uint8
 	if len(interestsF) > 0 { //TODO: Add validation
-		interestsFilter = string(interestsF)
+		interestsFilter = interestsDict.GetId(string(interestsF))
 	}
 
 	likesF := ctx.QueryArgs().Peek("likes")
-	var likesFilter int
+	var likesFilter uint32
 	if len(likesF) > 0 { //TODO: Add validation
-		likesFilter, _ = strconv.Atoi(string(likesF))
+		tempUint, _ := strconv.ParseUint(string(likesF), 10, 32)
+		likesFilter = uint32(tempUint)
 	}
 	//todo: add premium filter support?
 
@@ -308,77 +311,77 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 	if index != nil {
 		it := index.Iterator()
 		for it.Next() {
-			account := it.Value().(*Account)
+			account := it.Value().(*AccountUpdated)
 
 			// conditions
 			if len(sexFilter) > 0 { //TODO: move len from loop
-				if account.Sex != sexFilter {
+				if account.Sex != sexDict.GetId(sexFilter) {
 					continue
 				}
 			}
 
 			if len(emailFilter) > 0 {
-				if account.Email != emailFilter {
+				if account.Email != emailsDict.GetId(emailFilter) {
 					continue
 				}
 			}
 
 			if len(statusFilter) > 0 {
-				if account.Status != statusFilter {
+				if account.Status != statusDict.GetId(statusFilter) {
 					continue
 				}
 			}
 
 			if len(fnameFilter) > 0 {
-				if account.Fname != fnameFilter {
+				if account.Fname != fnamesDict.GetId(fnameFilter) {
 					continue
 				}
 			}
 
 			if len(snameFilter) > 0 {
-				if account.Sname != snameFilter {
+				if account.Sname != snamesDict.GetId(snameFilter) {
 					continue
 				}
 			}
 
 			if len(phoneFilter) > 0 {
-				if account.Phone != phoneFilter {
+				if account.Phone != phonesDict.GetId(phoneFilter) {
 					continue
 				}
 			}
 
 			if len(countryFilter) > 0 {
-				if account.Country != countryFilter {
+				if account.Country != countriesDict.GetId(countryFilter) {
 					continue
 				}
 			}
 
 			if len(cityFilter) > 0 {
-				if account.City != cityFilter {
+				if account.City != citiesDict.GetId(cityFilter) {
 					continue
 				}
 			}
 
 			if birthFilter != 0 {
-				if account.birthYear != birthFilter {
+				if account.BirthYear != birthFilter {
 					continue
 				}
 			}
 
 			if joinedFilter != 0 {
-				if account.joinedYear != joinedFilter {
+				if account.JoinedYear != joinedFilter {
 					continue
 				}
 			}
 
-			if interestsFilter != "" {
-				if _, ok := account.interestsMap[interestsFilter]; !ok {
+			if interestsFilter != 0 {
+				if _, ok := account.InterestsMap[interestsFilter]; !ok {
 					continue
 				}
 			}
 
 			if likesFilter != 0 {
-				if _, ok := account.likes[likesFilter]; !ok {
+				if _, ok := likesMap.getLikesFor(account.ID)[likesFilter]; !ok {
 					continue
 				}
 			}
@@ -391,19 +394,19 @@ func groupHandler(ctx *fasthttp.RequestCtx) {
 				keyName := value.(string)
 				switch keyName {
 				case "sex":
-					resultKey += "_" + keyName + ":" + account.Sex
+					resultKey += "_" + keyName + ":" + string(account.Sex)
 				case "status":
-					resultKey += "_" + keyName + ":" + account.Status
+					resultKey += "_" + keyName + ":" + string(account.Status)
 				case "country":
-					resultKey += "_" + keyName + ":" + account.Country
+					resultKey += "_" + keyName + ":" + string(account.Country)
 				case "city":
-					resultKey += "_" + keyName + ":" + account.City
+					resultKey += "_" + keyName + ":" + string(account.City)
 				}
 			})
 
 			if hasInterestsKey {
-				for interest := range account.interestsMap {
-					interestsKey := resultKey + "_interests:" + interest
+				for interest := range account.InterestsMap {
+					interestsKey := resultKey + "_interests:" + string(interest)
 					foundGroups[interestsKey] += 1
 				}
 			} else if len(resultKey) > 0 {

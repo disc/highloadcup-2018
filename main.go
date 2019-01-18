@@ -119,7 +119,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		}
 		// /accounts/<id>/
 		if pathLen >= 12 && pathLen <= 21 && path[8] == 's' {
-			updateUserHandler(ctx, parseAccountId(path))
+			updateUserHandler(ctx, int(parseAccountId(path)))
 			return
 		}
 		// 404
@@ -127,7 +127,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func parseAccountId(path []byte) int {
+func parseAccountId(path []byte) uint32 {
 	from := bytes.IndexByte(path[1:], '/')
 	to := bytes.IndexByte(path[from+2:], '/')
 
@@ -137,9 +137,9 @@ func parseAccountId(path []byte) int {
 		to += from + 2
 	}
 
-	entityId, _ := strconv.Atoi(string(path[from+2 : to]))
+	entityId, _ := strconv.ParseUint(string(path[from+2:to]), 10, 32)
 
-	return entityId
+	return uint32(entityId)
 }
 
 func parseFile(filename string) {
